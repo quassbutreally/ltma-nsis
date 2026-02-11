@@ -234,7 +234,6 @@ Invoke-WebRequest -Uri http://127.0.0.1:5000/api/status-update `
 ## Known Limitations
 
 - Aircraft state is held in memory only — restarting the Flask server clears all data
-- The weather panel is a placeholder — METAR integration is planned
 - Sector home pages are not yet implemented
 
 ---
