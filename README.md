@@ -12,7 +12,7 @@ This project consists of two components:
 
 **EuroScope Plugin (C++ DLL)** — Monitors aircraft ground state changes within EuroScope and detects airborne transitions. Sends state updates to the local web server via HTTP.
 
-**Web Application (Python/Flask + HTML/JS)** — Receives updates from the plugin, maintains current state, and serves a browser-based departure list display that updates in real time.
+**Web Application (Python/Flask + HTML/JS)** — Receives updates from the plugin, maintains current state, and serves a browser-based departure list display that updates in real time. Also fetches and displays live METAR data for nominated airfields.
 
 ---
 
@@ -48,9 +48,9 @@ vatsim-departure-list/
 └── plugin/
     ├── CMakeLists.txt
     ├── sdk/
-    │   ├── EuroScopePlugIn.h   # EuroScope SDK header (provide your own)
+    │   ├── EuroScopePlugIn.h       # EuroScope SDK header (provide your own)
     │   ├── EuroScopePlugInDll.lib  # EuroScope SDK lib (provide your own)
-    │   └── httplib.h           # cpp-httplib (provide your own)
+    │   └── httplib.h               # cpp-httplib (provide your own)
     └── src/
         └── plugin.cpp          # Plugin source
 ```
@@ -137,7 +137,7 @@ const POSITION_CONFIGS = {
         "weather_sections": [
           {
             "airport": "EGLL",
-            "label": "HEATHROW"
+            "label": "HEATHROW"    // Display name shown at top of weather panel
           }
         ],
         "sections": [
@@ -189,6 +189,39 @@ Within each section, aircraft are displayed in the following order:
 
 If more aircraft are present than a section can display, the excess count is shown in the section header as `MORE N`.
 
+### Route Indicators
+
+Each departure list section can optionally define route indicators — keyword mappings that scan the filed route and display a short label in the route column. For example, if an aircraft's route contains `M85`, the route column will display `ITVIP`. This is useful for highlighting routing that is operationally significant to a particular sector.
+
+Only the first matching keyword is displayed. If no keywords match, the route column is blank.
+
+---
+
+## Weather Panel
+
+Each position can define one or more weather panels. Weather data is fetched from the [VATSIM METAR API](https://metar.vatsim.net) on demand and cached for 5 minutes. The panel displays:
+
+- **TOI** — Time of issue (UTC)
+- **VISIBILITY** — Visibility in km, or `CAVOK` if applicable
+- **WX** — Present weather (e.g. light rain and drizzle)
+- **CLOUD** — Up to 3 cloud layers, displayed highest to lowest (e.g. `BKN 2400`)
+- **TEMP/DP** — Temperature and dewpoint (e.g. `11/09`)
+- **QNH** — Altimeter setting in hPa (displayed as e.g. `983A`)
+
+### Wind Wheel
+
+The lower half of each weather panel contains an SVG wind wheel:
+
+- 36 segments representing wind direction in 10° increments, each centred on its reported bearing
+- The segment corresponding to the reported wind direction is highlighted white; all others are green
+- For variable winds, all segments within the reported range are highlighted white
+- A white arrow inside the ring points toward the active bearing
+- The centre box displays the steady wind speed
+- Min/Max labels in the corners show steady wind speed (min) and gust speed (max); if no gust is reported, both show the steady speed
+- Cardinal points (N/E/S/W) are displayed inside the ring
+- Bearing markers (36, 03, 06... etc.) are displayed outside the ring
+- No arrow or highlighted segment is drawn when wind speed is zero
+
 ---
 
 ## API Endpoints
@@ -200,6 +233,7 @@ The Flask backend exposes the following endpoints:
 | `POST` | `/api/status-update` | Receive aircraft state update from plugin |
 | `GET` | `/api/departures` | Get all current departure data |
 | `GET` | `/api/departures/<airport>` | Get departures for a specific airport |
+| `GET` | `/api/weather/<airport>` | Get parsed METAR data for a specific airport |
 | `POST` | `/api/clear` | Clear all aircraft data |
 | `GET` | `/health` | Health check |
 
@@ -216,6 +250,34 @@ The Flask backend exposes the following endpoints:
 }
 ```
 
+### Weather Response
+
+```json
+{
+  "airport": "EGLL",
+  "toi": "1220",
+  "cavok": false,
+  "visibility": "8KM",
+  "weather": "light rain and drizzle",
+  "clouds": [
+    { "cover": "BKN", "height": 2400 },
+    { "cover": "SCT", "height": 2000 },
+    { "cover": "FEW", "height": 1500 }
+  ],
+  "temp": 11.0,
+  "dewpoint": 9.0,
+  "qnh": "983hPa",
+  "wind": {
+    "direction": 250.0,
+    "speed": 13.0,
+    "gust": null,
+    "variable_from": null,
+    "variable_to": null
+  },
+  "raw": "EGLL 111220Z AUTO 25013KT 9999 -RADZ FEW012 BKN018 BKN027 11/09 Q0983 TEMPO SHRA"
+}
+```
+
 ---
 
 ## Testing Without EuroScope
@@ -229,18 +291,27 @@ Invoke-WebRequest -Uri http://127.0.0.1:5000/api/status-update `
   -Body '{"callsign":"BAW123","airport":"EGLL","status":"TAXI","sid":"BPK7G","squawk":"1234","route":"BPK M85 ITVIP"}'
 ```
 
+You can also test the weather endpoint directly in a browser:
+```
+http://127.0.0.1:5000/api/weather/EGLL
+```
+
 ---
 
 ## Known Limitations
 
 - Aircraft state is held in memory only — restarting the Flask server clears all data
 - Sector home pages are not yet implemented
+- Weather panel background colour is not yet configurable per airport
+- ATIS integration is not yet implemented — weather is sourced from METAR only
 
 ---
 
 ## Roadmap
 
-- [X] METAR integration with wind wheel display
+- [x] METAR integration with wind wheel display
+- [ ] ATIS integration (with METAR fallback)
+- [ ] Configurable weather panel background colour per airport
 - [ ] Sector home pages
 - [ ] Persistent state across server restarts
 - [ ] Additional sector group configurations

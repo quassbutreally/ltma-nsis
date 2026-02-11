@@ -22,3 +22,4 @@ Thumbs.db
 
 # C++
 cmake-build-debug/
+sdk/
