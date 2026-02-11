@@ -141,11 +141,35 @@ function updatePositionButtons(sectorId) {
  * Handle position button click
  */
 function handlePositionClick(positionId) {
-    currentPosition = positionId;
+    const sectorConfig = POSITION_CONFIGS[currentSectorGroup];
+    let positionConfig = sectorConfig.positions.find(p => p.id === positionId);
     
-    // Update button states
+    if (!positionConfig) return;
+    
+    console.log('Clicked position:', positionId);
+    console.log('Position config:', positionConfig);
+    
+    // If this is an alias, load the target position's config
+    const targetPositionId = positionConfig.alias_for || positionId;
+    const targetConfig = sectorConfig.positions.find(p => p.id === targetPositionId);
+    
+    if (!targetConfig) return;
+    
+    currentPosition = targetPositionId;
+    
+    console.log('Target position:', targetPositionId);
+    console.log('Target config:', targetConfig);
+    
+    // Build list of all buttons that should be highlighted
+    const linkedPositions = targetConfig.linked_positions || [];
+    const activePositions = [targetPositionId, ...linkedPositions];
+    
+    console.log('Active positions should be:', activePositions);
+    
     document.querySelectorAll('.position-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.positionId === positionId);
+        const shouldBeActive = activePositions.includes(btn.dataset.positionId);
+        console.log(`Button ${btn.dataset.positionId}: ${shouldBeActive}`);
+        btn.classList.toggle('active', shouldBeActive);
     });
     
     renderPositionContent();
