@@ -1,8 +1,9 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from datetime import datetime, timezone
-import json
 import threading
+import requests
+from metar.Metar import Metar
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for local development
@@ -137,6 +138,118 @@ def auto_cleanup():
                     )
                 ]
             print("Auto cleanup complete")
+
+# METAR cache
+# Structure: {airport: (timestamp, parsed_data)}
+metar_cache = {}
+METAR_CACHE_TTL = 300  # 5 minutes
+
+def fetch_metar(airport):
+    """Fetch and parse METAR for an airport, with caching"""
+    now = datetime.now(timezone.utc).timestamp()
+
+    if airport in metar_cache:
+        cached_time, cached_data = metar_cache[airport]
+
+        if now - cached_time < METAR_CACHE_TTL:
+            return cached_data
+        
+    try:
+        response = requests.get(
+            f'https://metar.vatsim.net/metar.php?id={airport}',
+            timeout=5
+        )
+
+        if response.status_code != 200 or not response.text.strip():
+            return None
+        
+        raw = response.text.strip()
+        obs = Metar(raw)
+
+        toi = obs.time.strftime('%H%M') if obs.time else None
+
+        # Parse wind
+        wind_dir = obs.wind_dir.value() if obs.wind_dir else None
+        wind_speed = obs.wind_speed.value('KT') if obs.wind_speed else None
+        wind_gust = obs.wind_gust.value('KT') if obs.wind_gust else None
+        wind_dir_from = obs.wind_dir_from.value() if obs.wind_dir_from else None
+        wind_dir_to = obs.wind_dir_to.value() if obs.wind_dir_to else None
+
+        if obs.vis and obs.vis.value('M') >= 9999 and not obs.sky and not obs.weather:
+            visibility = 'CAVOK'
+            clouds = []
+            weather = None
+        else:
+            # Parse visibility
+            visibility = None
+            if obs.vis:
+                vis_val = obs.vis.value('M')
+                if vis_val >= 9999:
+                    visibility = '10KM+'
+                elif vis_val > 1000:
+                    visibility = f'{int(vis_val/1000)}KM'
+                else:
+                    visibility = f'{int(vis_val)}M'
+
+            # Parse cloud layers
+            clouds = []
+            for layer in obs.sky:
+                cover, height, special = layer
+                if height:
+                    clouds.append({
+                        'cover': cover,
+                        'height': int(height.value('FT'))
+                    })
+
+            # Parse weather
+            weather = obs.present_weather() if obs.weather else None
+
+        # Parse temp/dewpoint
+        temp = obs.temp.value('C') if obs.temp else None
+        dewpoint = obs.dewpt.value('C') if obs.dewpt else None
+
+        # Parse QNH
+        qnh = None
+        if obs.press:
+            qnh = f'{int(obs.press.value("HPA"))}hPa'
+
+        data = {
+            'raw': raw,
+            'airport': airport,
+            'toi': toi,
+            'cavok': visibility == 'CAVOK',
+            'wind': {
+                'direction': wind_dir,
+                'speed': wind_speed,
+                'gust': wind_gust,
+                'variable_from': wind_dir_from,
+                'variable_to': wind_dir_to
+            },
+            'visibility': visibility,
+            'weather': weather,
+            'clouds': clouds,
+            'temp': temp,
+            'dewpoint': dewpoint,
+            'qnh': qnh
+        }
+
+        metar_cache[airport] = (now, data)
+        return data
+        
+    except Exception as e:
+        print(f"Error fetching METAR for {airport}: {e}")
+        return None
+    
+@app.route('/api/weather/<airport>', methods=['GET'])
+def get_weather(airport):
+    """Get parsed METAR data for an airport"""
+    data = fetch_metar(airport.upper())
+    
+    if data is None:
+        return jsonify({'error': 'Could not fetch METAR'}), 404
+    
+    return jsonify(data), 200
+        
 
 if __name__ == '__main__':
     cleanup_thread = threading.Thread(target=auto_cleanup, daemon=True)
