@@ -87,15 +87,30 @@ function initializeSidebar() {
  */
 function handleSectorClick(sectorId) {
     currentSectorGroup = sectorId;
-    currentPosition = null;
     
-    // Update button states
+    // Update sector button states
     document.querySelectorAll('.sector-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.sectorId === sectorId);
     });
     
     updatePositionButtons(sectorId);
-    clearMainContent();
+    
+    // Auto-load default position if configured
+    const sectorConfig = POSITION_CONFIGS[sectorId];
+    if (sectorConfig?.positions?.length > 0) {
+        const defaultPositionId = sectorConfig.default_position || sectorConfig.positions[0].id;
+        const defaultPosition = sectorConfig.positions.find(p => p.id === defaultPositionId);
+        
+        if (defaultPosition) {
+            handlePositionClick(defaultPosition.id);
+        } else {
+            // Fallback to first if default not found
+            handlePositionClick(sectorConfig.positions[0].id);
+        }
+    } else {
+        currentPosition = null;
+        clearMainContent();
+    }
 }
 
 /**
@@ -194,7 +209,7 @@ async function renderWeatherSections(weatherConfigs) {
     for (const config of weatherConfigs) {
         const weatherBox = createWeatherBox(config);
         container.appendChild(weatherBox);
-        await updateWeatherBox(weatherBox, config.airport);
+        await updateWeatherBox(weatherBox, config.airport, config);
     }
     
     startWeatherRefresh(weatherConfigs);
@@ -208,6 +223,10 @@ function createWeatherBox(config) {
     weatherBox.className = 'weather-box';
     weatherBox.dataset.airport = config.airport;
     weatherBox.dataset.label = config.label;
+
+    // Apply background colour (defaults to blue if unspecified)
+    const backgroundColor = AIRPORT_COLORS[config.airport] || DEFAULT_AIRPORT_COLOR;
+    weatherBox.style.backgroundColor = backgroundColor;
     
     weatherBox.innerHTML = `
         <div class="weather-title">${config.label}</div>
@@ -235,7 +254,7 @@ function createWeatherBox(config) {
 /**
  * Fetch and display weather data for an airport
  */
-async function updateWeatherBox(box, airport) {
+async function updateWeatherBox(box, airport, config) {
     try {
         const response = await fetch(`${API_BASE_URL}/weather/${airport}`);
         
@@ -246,10 +265,7 @@ async function updateWeatherBox(box, airport) {
         const data = await response.json();
         
         // Rebuild box structure
-        const newBox = createWeatherBox({
-            airport: airport,
-            label: box.dataset.label
-        });
+        const newBox = createWeatherBox(config);
         box.replaceWith(newBox);
         
         renderWeatherFields(newBox, data);
@@ -274,7 +290,7 @@ function renderWeatherFields(box, data) {
 
     // Time of issue
     if (data.toi) {
-        fieldsContainer.appendChild(createWeatherField('TOI', `${data.toi}Z`));
+        fieldsContainer.appendChild(createWeatherField('TOI', `${data.toi}`));
     }
     
     // Visibility (blank if CAVOK)
@@ -348,9 +364,19 @@ function startWeatherRefresh(weatherConfigs) {
     }
     
     weatherRefreshTimer = setInterval(() => {
-        document.querySelectorAll('.weather-box').forEach(box => {
-            updateWeatherBox(box, box.dataset.airport);
-        });
+        // Need to find the original config for each box
+        const sectorConfig = POSITION_CONFIGS[currentSectorGroup];
+        const positionConfig = sectorConfig?.positions.find(p => p.id === currentPosition);
+        
+        if (positionConfig) {
+            document.querySelectorAll('.weather-box').forEach(box => {
+                const airport = box.dataset.airport;
+                const config = positionConfig.weather_sections.find(ws => ws.airport === airport);
+                if (config) {
+                    updateWeatherBox(box, airport, config);
+                }
+            });
+        }
     }, WEATHER_REFRESH_INTERVAL);
 }
 

@@ -15,12 +15,137 @@ const SECTOR_GROUPS = [
   { id: 'NORTHOLT', name: 'NORTHOLT' }
 ];
 
+const AIRPORT_COLORS = {
+  'EGLL' : '#00ff00',
+  'EGSS' : '#ffff00',
+  'EGGW' : '#ff8c00',
+  'EGKK' : '#ff69b4'
+};
+const DEFAULT_AIRPORT_COLOR = '#4169e1';
+
 const POSITION_CONFIGS = {
   "TC_EAST": {
+    "default_position" : "EAST BANDBOX",
     "positions": [
+      {
+        "id": "DAGGA",
+        "name": "DAGGA",
+        "weather_sections": [
+          {
+            "airport": "EGLL",
+            "label": "HEATHROW"
+          }
+        ],
+                "sections": [
+          {
+            "airport": "EGLL",
+            "label": "EGLL BPK BPK/L",
+            "height_percent": 50,
+            "sids": ["BPK"]
+          },
+          {
+            "airport": "EGKK",
+            "label": "EGKK DAGGA FRANE",
+            "height_percent": 25,
+            "sids": ["FRANE", "DAGGA"]
+          },
+          {
+            "airport": "EGGW",
+            "label": "EGGW MATCH",
+            "height_percent": 25,
+            "sids": ["MATCH"],
+                "route_indicators": [
+                  { "keyword": "M85", "display": "ITVIP" },
+                  { "keyword": "M84", "display": "DVR" }
+                ]
+          }
+        ]
+      },
+      {
+        "id": "REDFA",
+        "name": "REDFA",
+        "weather_sections": [
+          {
+            "airport": "EGSS",
+            "label": "STANSTED"
+          }
+        ],
+        "sections": [
+          {
+            "airport": "EGSS",
+            "label": "EGSS CLN",
+            "height_percent": 50,
+            "sids": ["CLN"],
+                "route_indicators": [
+                  { "keyword": "M84", "display": "DVR" }
+                ]
+          },
+          {
+            "airport": "EGLC",
+            "label": "EGLC CLN ODUKU",
+            "height_percent": 50,
+            "sids": ["CLN", "ODUKU"]
+          }
+        ]
+      },
       {
         "id": "SABER",
         "name": "SABER",
+        "weather_sections": [
+          {
+            "airport": "EGLL",
+            "label": "HEATHROW"
+          }
+        ],
+        "sections": [
+          {
+            "airport": "EGKK",
+            "label": "EGKK DAGGA FRANE",
+            "height_percent": 40,
+            "sids": ["FRANE", "DAGGA"]
+          },
+          {
+            "airport": "EGSS",
+            "label": "EGSS CLN",
+            "height_percent": 30,
+            "sids": ["CLN"],
+                "route_indicators": [
+                  { "keyword": "M84", "display": "DVR" }
+                ]
+          },
+          {
+            "airport": "EGGW",
+            "label": "EGGW MATCH",
+            "height_percent": 30,
+            "sids": ["MATCH"],
+                "route_indicators": [
+                  { "keyword": "M85", "display": "ITVIP" },
+                  { "keyword": "M84", "display": "DVR" }
+                ]
+          }
+        ]
+      },
+      {
+        "id": "JACKO",
+        "name": "JACKO",
+        "weather_sections": [
+          {
+            "airport": "EGLC",
+            "label": "LONDON CITY"
+          }
+        ],
+        "sections": [
+          {
+            "airport": "EGSS",
+            "label": "EGSS CLN",
+            "height_percent": 100,
+            "sids": ["CLN"]
+          }
+        ]
+      },
+      {
+        "id": "EAST BANDBOX",
+        "name": "EAST BANDBOX",
         "weather_sections": [
           {
             "airport": "EGLL",
@@ -43,7 +168,7 @@ const POSITION_CONFIGS = {
           {
             "airport": "EGSS",
             "label": "EGSS CLN",
-            "height_percent": 14.725,
+            "height_percent": 15,
             "sids": ["CLN"],
                 "route_indicators": [
                   { "keyword": "M84", "display": "DVR" }
@@ -52,7 +177,7 @@ const POSITION_CONFIGS = {
           {
             "airport": "EGLC",
             "label": "EGLC CLN ODUKU",
-            "height_percent": 14.725,
+            "height_percent": 15,
             "sids": ["CLN", "ODUKU"]
           },
           {
@@ -67,113 +192,7 @@ const POSITION_CONFIGS = {
           }
         ]
       },
-      {
-        "id": "JACKO",
-        "name": "JACKO",
-        "weather_sections": [
-          {
-            "airport": "EGSS",
-            "label": "STANSTED"
-          }
-        ],
-        "sections": [
-          {
-            "airport": "EGSS",
-            "label": "EGSS CLN",
-            "height_percent": 100,
-            "sids": ["CLN"]
-          }
-        ]
-      },
-      {
-        "id": "DAGGA",
-        "name": "DAGGA",
-        "weather_sections": [],
-        "sections": [
-          {
-            "airport": "EGKK",
-            "label": "EGKK CLN",
-            "height_percent": 100,
-            "sids": ["CLN"]
-          }
-        ]
-      },
-      {
-        "id": "REDFA",
-        "name": "REDFA",
-        "weather_sections": [],
-        "sections": [
-          {
-            "airport": "EGGW",
-            "label": "EGGW CLN",
-            "height_percent": 100,
-            "sids": ["CLN"]
-          }
-        ]
-      }
-    ]
-  },
-  "TC_NORTH": {
-    "positions": [
-      {
-        "id": "LOGAN",
-        "name": "LOGAN",
-        "weather_sections": [],
-        "sections": [
-          {
-            "airport": "EGLL",
-            "label": "EGLL CPT",
-            "height_percent": 100,
-            "sids": ["CPT"]
-          }
-        ]
-      }
-    ]
-  },
-  "HEATHROW": {
-    "positions": [
-      {
-        "id": "EGLL_GND",
-        "name": "EGLL GND",
-        "weather_sections": [
-          {
-            "airport": "EGLL",
-            "label": "HEATHROW"
-          }
-        ],
-        "sections": [
-          {
-            "airport": "EGLL",
-            "label": "EGLL BPK BPK/L",
-            "height_percent": 50,
-            "sids": ["BPK", "BPK/L"]
-          },
-          {
-            "airport": "EGLL",
-            "label": "EGLL CPT",
-            "height_percent": 50,
-            "sids": ["CPT"]
-          }
-        ]
-      },
-      {
-        "id": "EGLL_TWR",
-        "name": "EGLL TWR",
-        "weather_sections": [
-          {
-            "airport": "EGLL",
-            "label": "HEATHROW"
-          }
-        ],
-        "sections": [
-          {
-            "airport": "EGLL",
-            "label": "EGLL ALL",
-            "height_percent": 100,
-            "sids": ["BPK", "CPT", "SAM"]
-          }
-        ]
-      }
+      
     ]
   }
 };
