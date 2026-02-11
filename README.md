@@ -241,7 +241,7 @@ Invoke-WebRequest -Uri http://127.0.0.1:5000/api/status-update `
 
 ## Roadmap
 
-- [ ] METAR integration with wind wheel display
+- [X] METAR integration with wind wheel display
 - [ ] Sector home pages
 - [ ] Persistent state across server restarts
 - [ ] Additional sector group configurations
