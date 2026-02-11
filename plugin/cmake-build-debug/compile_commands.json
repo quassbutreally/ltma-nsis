@@ -1,0 +1,8 @@
+[
+{
+  "directory": "C:/Users/josha/Documents/ltma-nsis/plugin/cmake-build-debug",
+  "command": "C:\\PROGRA~2\\MICROS~2\\2022\\BUILDT~1\\VC\\Tools\\MSVC\\1444~1.352\\bin\\Hostx86\\x86\\cl.exe  /nologo /TP -DVatsimDepartureList_EXPORTS -DWIN32 -DWIN32_LEAN_AND_MEAN -D_USRDLL -D_WINDOWS -IC:\\Users\\josha\\Documents\\ltma-nsis\\plugin\\sdk /DWIN32 /D_WINDOWS /EHsc /Ob0 /Od -std:c++20 -MDd -RTC1 -Zi /arch:IA32 @CMakeFiles\\VatsimDepartureList.dir\\src\\plugin.cpp.obj.modmap /FoCMakeFiles\\VatsimDepartureList.dir\\src\\plugin.cpp.obj /FdCMakeFiles\\VatsimDepartureList.dir\\ /FS -c C:\\Users\\josha\\Documents\\ltma-nsis\\plugin\\src\\plugin.cpp",
+  "file": "C:/Users/josha/Documents/ltma-nsis/plugin/src/plugin.cpp",
+  "output": "C:/Users/josha/Documents/ltma-nsis/plugin/cmake-build-debug/CMakeFiles/VatsimDepartureList.dir/src/plugin.cpp.obj"
+}
+]

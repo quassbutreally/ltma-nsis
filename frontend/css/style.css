@@ -1,0 +1,257 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: sans-serif, Courier, monospace;
+    background-color: #1a1a2e;
+    color: #00ff00;
+    overflow: hidden;
+    height: 100vh;
+}
+
+.app-container {
+    display: flex;
+    height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 140px;
+    background-color: #0f0f1e;
+    border-right: 2px solid #00ff00;
+    display: flex;
+    flex-direction: column;
+}
+
+.position-buttons {
+    display: flex;
+    flex-direction: column;
+    border-bottom: 2px solid #00ff00;
+}
+
+.position-btn {
+    height: 40px;
+    background-color: #6a5acd;
+    color: #ffffff;
+    border: 1px solid #4a4a7a;
+    font-size: 12px;
+    cursor: pointer;
+    text-align: center;
+    padding: 5px;
+    transition: background-color 0.2s;
+}
+
+.position-btn:not(:disabled):hover {
+    background-color: #7a6add;
+}
+
+.position-btn:disabled {
+    background-color: #2a2a3e;
+    color: #555;
+    cursor: not-allowed;
+}
+
+.position-btn.active {
+    background-color: #4169e1;
+    font-weight: bold;
+}
+
+.sector-buttons {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.sector-btn {
+    height: 40px;
+    background-color: #6a5acd;
+    color: #ffffff;
+    border: 1px solid #4a4a7a;
+    font-size: 11px;
+    cursor: pointer;
+    text-align: center;
+    padding: 5px;
+    transition: background-color 0.2s;
+}
+
+.sector-btn:hover {
+    background-color: #7a6add;
+}
+
+.sector-btn.active {
+    background-color: #4169e1;
+    font-weight: bold;
+}
+
+/* Main Content */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+
+header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 10px 20px;
+    background-color: #0f0f1e;
+    border-bottom: 2px solid #00ff00;
+    flex-shrink: 0;
+}
+
+header h1 {
+    font-size: 24px;
+    color: #ffff00;
+}
+
+.time {
+    font-size: 20px;
+    color: #00ff00;
+    font-weight: bold;
+}
+
+.status {
+    margin-left: auto;
+    padding: 5px 10px;
+    border: 1px solid #ff0000;
+    color: #ff0000;
+    font-size: 14px;
+}
+
+.status.connected {
+    border-color: #00ff00;
+    color: #00ff00;
+}
+
+.content-area {
+    flex: 1;
+    min-height: 0;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr;
+    gap: 20px;
+    overflow: hidden;
+}
+
+/* Weather section */
+.weather-sections {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.weather-box {
+    flex: 1;
+    min-height: 0;
+    background-color: #ffff00;
+    color: #000000;
+    padding: 15px;
+}
+
+.weather-box .title {
+    font-weight: bold;
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+.weather-box .info {
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.weather-placeholder {
+    color: #666;
+    font-style: italic;
+}
+
+/* Departure Lists */
+.departure-lists {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    overflow: hidden;
+    background-color: #4169e1;
+    border: 2px solid #4169e1;
+}
+
+.layout-warning {
+    background-color: #ff0000;
+    color: #ffffff;
+    padding: 8px 15px;
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+
+.airport-section {
+    background-color: #0f0f1e;
+    border: 2px solid #4169e1;
+}
+
+.airport-header {
+    background-color: #4169e1;
+    color: #ffffff;
+    padding: 2.5px 2.5px;
+    font-weight: bold;
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.more-indicator {
+    color: #ffffff;
+    font-size: 12px;
+}
+
+.departure-list {
+    padding: 5px;
+    overflow: hidden;
+    background-color: #000000;
+}
+
+.departure-item {
+    display: grid;
+    grid-template-columns: 100px 100px 100px 100px 100px;
+    padding: 1px 1px 5px;
+    color: #ffffff;
+}
+
+.departure-item:last-child {
+    border-bottom: none;
+}
+
+.callsign .sid .status {
+    color: #ffffff;
+}
+
+.indicator {
+    color: #ffffff;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #1a1a2e;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #00ff00;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #00cc00;
+}

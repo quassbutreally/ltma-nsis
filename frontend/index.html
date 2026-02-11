@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VATSIM Departure List</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Left Sidebar -->
+        <div class="sidebar">
+            <!-- Top 8 position buttons -->
+            <div class="position-buttons">
+                <button class="position-btn" data-position="0" disabled></button>
+                <button class="position-btn" data-position="1" disabled></button>
+                <button class="position-btn" data-position="2" disabled></button>
+                <button class="position-btn" data-position="3" disabled></button>
+                <button class="position-btn" data-position="4" disabled></button>
+                <button class="position-btn" data-position="5" disabled></button>
+                <button class="position-btn" data-position="6" disabled></button>
+                <button class="position-btn" data-position="7" disabled></button>
+            </div>
+
+            <!-- Bottom 14 sector group buttons -->
+            <div class="sector-buttons">
+                <!-- Will be populated from SECTOR_GROUPS -->
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <header>
+                <h1>DEPARTURE LIST</h1>
+                <div class="time" id="current-time">13:03:50</div>
+                <span class="status" id="connection-status">Disconnected</span>
+            </header>
+
+            <div class="content-area">
+                <!-- Weather sections -->
+                <div id="weather-sections" class="weather-sections">
+                    <!-- Weather boxes will be inserted here -->
+                </div>
+
+                <!-- Departure lists -->
+                <div id="departure-lists" class="departure-lists">
+                    <!-- Departure list sections will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="config/positions.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

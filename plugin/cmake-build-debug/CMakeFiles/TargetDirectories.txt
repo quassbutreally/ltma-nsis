@@ -1,0 +1,3 @@
+C:/Users/josha/Documents/ltma-nsis/plugin/cmake-build-debug/CMakeFiles/VatsimDepartureList.dir
+C:/Users/josha/Documents/ltma-nsis/plugin/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/josha/Documents/ltma-nsis/plugin/cmake-build-debug/CMakeFiles/rebuild_cache.dir
