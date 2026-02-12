@@ -27,6 +27,16 @@ METAR_CACHE_TTL = 300  # 5 minutes
 AIRBORNE_CLEANUP_INTERVAL = 180  # 3 minutes (align with frontend display time)
 AIRBORNE_RETENTION_TIME = 180  # 3 minutes (match frontend DEPARTED_DISPLAY_TIME)
 
+VALID_AIRPORTS = {
+    'EGLL',  # London Heathrow
+    'EGKK',  # London Gatwick
+    'EGSS',  # London Stansted
+    'EGGW',  # London Luton
+    'EGLC',  # London City
+    'EGBB',  # Birmingham
+    'EGNX'   # East Midlands
+}
+
 # In-memory storage
 # Structure: {airport_code: [{callsign, status, sid, timestamp, ...}]}
 aircraft_data = {}
@@ -63,6 +73,14 @@ def status_update():
         
         if not all([callsign, airport, status]):
             return jsonify({'error': 'Missing required fields'}), 400
+        
+         # Validate airport
+        if airport not in VALID_AIRPORTS:
+            logger.debug(f"Ignoring update for unconfigured airport: {airport} ({callsign})")
+            return jsonify({
+                'success': False, 
+                'error': 'Airport not configured'
+            }), 200
         
         valid_statuses = ['STUP', 'PUSH', 'TAXI', 'DEPA', 'AIRBORNE', 'CLEAR']
         if status not in valid_statuses:
