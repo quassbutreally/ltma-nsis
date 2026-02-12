@@ -4,7 +4,7 @@ Flask server that receives aircraft state updates from EuroScope plugin
 and serves departure list and weather data to the frontend.
 """
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from datetime import datetime, timezone
 import threading
@@ -347,3 +347,13 @@ if __name__ == '__main__':
     logger.info("Server running on http://0.0.0.0:5000")
     
     app.run(debug=True, host='0.0.0.0', port=5000)
+
+@app.route('/')
+def index():
+    """Serve the main frontend page"""
+    return send_from_directory(app.static_folder, 'index.html')
+
+@app.route('/<path:path>')
+def serve_static(path):
+    """Serve static frontend files"""
+    return send_from_directory(app.static_folder, path)
