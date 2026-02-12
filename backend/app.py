@@ -189,12 +189,33 @@ def fetch_metar(airport):
         wind_dir_from = obs.wind_dir_from.value() if obs.wind_dir_from else None
         wind_dir_to = obs.wind_dir_to.value() if obs.wind_dir_to else None
 
-        # NCD (No Cloud Detected) is represented as [('NCD', None, None)]
-        sky_clear = not obs.sky or (len(obs.sky) == 1 and obs.sky[0][0] == 'NCD')
+        # Check for CAVOK
+        # CAVOK = vis 10km+, no cloud below 5000ft, no CB/TCU, no significant weather
+        sky_clear_below_5000 = True
+        has_cb_tcu = False
+
+        if obs.sky:
+            for layer in obs.sky:
+                cover, height, cloud_type = layer
+                
+                # Skip NCD
+                if cover == 'NCD':
+                    continue
+                    
+                # Check for CB or TCU
+                if cloud_type and cloud_type in ['CB', 'TCU']:
+                    has_cb_tcu = True
+                    break
+                
+                # Check if cloud is below 5000ft
+                if height and height.value('FT') < 5000:
+                    sky_clear_below_5000 = False
+                    break
 
         is_cavok = (
             obs.vis and obs.vis.value('M') >= 9999 and
-            sky_clear and
+            sky_clear_below_5000 and
+            not has_cb_tcu and
             not obs.weather
         )
         
