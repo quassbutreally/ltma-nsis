@@ -282,7 +282,7 @@ const POSITION_CONFIGS = {
           }
         ],
         "sections" : [
-{
+        {
             "airport" : "EGLL",
             "label" : "EGLL ULTIB UMLAT",
             "height_percent" : 40,
@@ -364,5 +364,121 @@ const POSITION_CONFIGS = {
       }
     ]
   },
-  
+  "HEATHROW" : {
+    "default_position" : "LL_INT",
+    "positions" : [
+      {
+        "id" : "LL_INT",
+        "name" : "HEATHROW INT",
+        "weather_sections" : [
+          {
+            "airport" : "EGLL",
+            "label" : "HEATHROW"
+          }
+        ],
+        "sections" : [
+          {
+            "airport" : "EGLL",
+            "label" : "EGLL ALL",
+            "height_percent" : 100,
+            "sids" : ["BPK", "CPT", "GASGU", "GOSGI", "DET", "MODMI", "MAXIT"]
+          }
+        ]
+      }
+    ]
+  },
+  "GATWICK" : {
+    "default_position" : "KK_INT",
+    "positions" : [
+      {
+        "id" : "KK_INT",
+        "name" : "GATWICK INT",
+        "weather_sections" : [
+          {
+            "airport" : "EGKK",
+            "label" : "GATWICK"
+          }
+        ],
+        "sections" : [
+          {
+            "airport" : "EGKK",
+            "label" : "EGLL ALL",
+            "height_percent" : 100,
+            "sids" : ["BOGNA", "DAGGA", "FRANE", "HARDY", "IMVUR", 
+                      "LAM", "NOVMA", "ODVIK", "SFD", "TIGER", "WIZAD",
+                      "DVR", "KENET", "MIMFO", "SAM"]
+          }
+        ]
+      }
+    ]
+  },
+  "STANSTED" : {
+    "default_position" : "SS_INT",
+    "positions" : [
+      {
+        "id" : "SS_INT",
+        "name" : "STANSTED INT",
+        "weather_sections" : [
+          {
+            "airport" : "EGSS",
+            "label" : "STANSTED"
+          }
+        ],
+        "sections" : [
+          {
+            "airport" : "EGSS",
+            "label" : "EGSS ALL",
+            "height_percent" : 100,
+            "sids" : ["CLN", "DET", "NUGBO", "UTAVA", "BKY"]
+          }
+        ]
+      }
+    ]
+  },
+  "LUTON" : {
+    "default_position" : "GW_INT",
+    "positions" : [
+      {
+        "id" : "GW_INT",
+        "name" : "LUTON INT",
+        "weather_sections" : [
+          {
+            "airport" : "EGGW",
+            "label" : "LUTON"
+          }
+        ],
+        "sections" : [
+          {
+            "airport" : "EGGW",
+            "label" : "EGGW ALL",
+            "height_percent" : 100,
+            "sids" : ["MATCH", "RODNI", "DET", "OLNEY"]
+          }
+        ]
+      }
+    ]
+  },
+  "THAMES" : {
+    "default_position" : "THAMES_INT",
+    "positions" : [
+      {
+        "id" : "THAMES_INT",
+        "name" : "THAMES INT",
+        "weather_sections" : [
+          {
+            "airport" : "EGLC",
+            "label" : "LONDON CITY"
+          }
+        ],
+        "sections" : [
+          {
+            "airport" : "EGLC",
+            "label" : "EGLC ALL",
+            "height_percent" : 100,
+            "sids" : ["BPK", "SAXBI", "ODUKU", "SOQQA"]
+          }
+        ]
+      }
+    ]
+  }
 };

@@ -662,20 +662,34 @@ function createSection(sectionConfig, availableHeight) {
     section.dataset.airport = sectionConfig.airport;
     section.dataset.sids = JSON.stringify(sectionConfig.sids);
     section.dataset.routeIndicators = JSON.stringify(sectionConfig.route_indicators || []);
+    section.dataset.showStarted = 'true';  // Default to showing started aircraft
     
-    // Calculate pixel height from percentage
     const sectionHeight = Math.floor((sectionConfig.height_percent / 100) * availableHeight);
     const listHeight = sectionHeight - HEADER_HEIGHT;
     const maxRows = Math.floor(listHeight / ROW_HEIGHT);
     section.dataset.maxRows = maxRows;
     
-    // Build section structure
     const header = document.createElement('div');
     header.className = 'airport-header';
     header.innerHTML = `
         <span>${sectionConfig.label}</span>
-        <span class="more-indicator">MORE 0</span>
+        <div class="header-right">
+            <button class="toggle-started">HIDE STARTED</button>
+            <span class="more-indicator">MORE 0</span>
+        </div>
     `;
+    
+    // Add toggle click handler
+    const toggleBtn = header.querySelector('.toggle-started');
+    toggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const currentState = section.dataset.showStarted === 'true';
+        section.dataset.showStarted = (!currentState).toString();
+        toggleBtn.textContent = currentState ? 'SHOW STARTED' : 'HIDE STARTED';
+        
+        // Refresh just this section
+        fetchDepartures();
+    });
     
     const list = document.createElement('div');
     list.className = 'departure-list';
@@ -687,6 +701,7 @@ function createSection(sectionConfig, availableHeight) {
     
     return section;
 }
+
 
 /**
  * Fetch departure data from backend
@@ -721,18 +736,32 @@ function updateDepartures(data) {
         const airport = section.dataset.airport;
         const sids = JSON.parse(section.dataset.sids);
         const maxRows = parseInt(section.dataset.maxRows);
+        const showStarted = section.dataset.showStarted === 'true';
         
         // Filter aircraft for this section
         let aircraft = (data[airport] || []).filter(ac => 
             ac.sid && sids.some(sid => ac.sid.startsWith(sid))
         );
         
+        // Filter out STUP/PUSH if this section's toggle is off
+        if (!showStarted) {
+            aircraft = aircraft.filter(ac => 
+                ac.status !== 'STUP' && ac.status !== 'PUSH'
+            );
+        }
+        
         // Remove old airborne aircraft
         aircraft = filterDepartedAircraft(aircraft);
         
-        // Sort by status then timestamp
+        // Sort: AIRBORNE > DEPA > TAXI > STUP/PUSH, then oldest first
         aircraft.sort((a, b) => {
-            const statusOrder = { 'AIRBORNE': 0, 'DEPA': 1, 'TAXI': 2 };
+            const statusOrder = { 
+                'AIRBORNE': 0, 
+                'DEPA': 1, 
+                'TAXI': 2,
+                'STUP': 3,
+                'PUSH': 3
+            };
             const statusDiff = statusOrder[a.status] - statusOrder[b.status];
             if (statusDiff !== 0) return statusDiff;
             return new Date(a.timestamp) - new Date(b.timestamp);
@@ -783,7 +812,9 @@ function createDepartureItem(aircraft, routeIndicators) {
     // SID
     const sid = document.createElement('span');
     sid.className = 'sid';
-    sid.textContent = aircraft.sid || '----';
+    // Strip suffix - just take letters before any digits
+    const sidName = aircraft.sid ? aircraft.sid.replace(/\d.*$/, '') : '----';
+    sid.textContent = sidName;
 
     // Route indicator (matched keyword)
     const matched = routeIndicators.find(ri => 
@@ -797,7 +828,9 @@ function createDepartureItem(aircraft, routeIndicators) {
     const indicator = document.createElement('span');
     indicator.className = 'indicator';
 
-    if (aircraft.status === 'TAXI') {
+    if (aircraft.status === 'PUSH' || aircraft.status === 'STUP') {
+        item.classList.add('started');
+    } else if (aircraft.status === 'TAXI') {
         indicator.textContent = '/';
         indicator.classList.add('taxi');
     } else if (aircraft.status === 'DEPA') {
@@ -825,9 +858,9 @@ function filterDepartedAircraft(aircraft) {
     const now = Date.now();
     
     return aircraft.filter(ac => {
-        if (ac.status === 'TAXI' || ac.status === 'DEPA') {
-            return true;
-        }
+        if (ac.status === 'STUP' || ac.status === 'PUSH') return true;
+        if (ac.status === 'TAXI') return true;
+        if (ac.status === 'DEPA') return true;
         
         if (ac.status === 'AIRBORNE') {
             const airborneTime = new Date(ac.timestamp).getTime();

@@ -47,14 +47,37 @@ public:
 
         std::string groundState = flightPlan.GetGroundState();
 
-        std::string stateMsg = "Ground state: " + groundState;
-        DisplayUserMessage("DepartureList", "Debug", stateMsg.c_str(), true, true, false, false, false);
-
-        if (groundState != "TAXI" && groundState != "DEPA")
+        // Valid states: STUP, PUSH, TAXI, DEPA, or empty (CLEAR)
+        if (groundState != "STUP" &&
+            groundState != "PUSH" &&
+            groundState != "TAXI" &&
+            groundState != "DEPA" &&
+            !groundState.empty()) {
             return;
+        }
 
         std::string callsign = flightPlan.GetCallsign();
         std::string airport = flightPlan.GetFlightPlanData().GetOrigin();
+
+        // Handle CLEAR (empty ground state)
+        if (groundState.empty()) {
+            AircraftState state;
+            state.callsign = callsign;
+            state.airport = airport;
+            state.status = "CLEAR";
+            state.sid = "";
+            state.squawk = "";
+            state.route = "";
+            state.airborne = false;
+
+            // Remove from tracked aircraft
+            trackedAircraft.erase(callsign);
+
+            std::thread([this, state]() {
+                PostStatusUpdate(state);
+            }).detach();
+            return;
+        }
         std::string sid = flightPlan.GetFlightPlanData().GetSidName();
         std::string squawk = flightPlan.GetControllerAssignedData().GetSquawk();
         std::string route = flightPlan.GetFlightPlanData().GetRoute();

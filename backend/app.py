@@ -49,7 +49,7 @@ def status_update():
     {
         "callsign": "BAW123",
         "airport": "EGLL",
-        "status": "TAXI" | "DEPA" | "AIRBORNE",
+        "status": "STUP" | "PUSH" | "TAXI" | "DEPA" | "AIRBORNE" | "CLEAR",
         "sid": "BPK7G",
         "squawk": "1234",
         "route": "BPK L620 DVR"
@@ -64,7 +64,8 @@ def status_update():
         if not all([callsign, airport, status]):
             return jsonify({'error': 'Missing required fields'}), 400
         
-        if status not in ['TAXI', 'DEPA', 'AIRBORNE']:
+        valid_statuses = ['STUP', 'PUSH', 'TAXI', 'DEPA', 'AIRBORNE', 'CLEAR']
+        if status not in valid_statuses:
             return jsonify({'error': 'Invalid status'}), 400
         
         # Initialize airport list if needed
@@ -77,6 +78,16 @@ def status_update():
             None
         )
         
+        # Handle CLEAR - remove aircraft
+        if status == 'CLEAR':
+            if aircraft:
+                aircraft_data[airport] = [
+                    a for a in aircraft_data[airport] 
+                    if a['callsign'] != callsign
+                ]
+                logger.info(f"Removed {callsign} from {airport}")
+            return jsonify({'success': True}), 200
+        
         if aircraft:
             old_status = aircraft.get('status')
             
@@ -85,13 +96,13 @@ def status_update():
                 aircraft['status'] = status
                 aircraft['timestamp'] = datetime.now(timezone.utc).isoformat()
             else:
-                # Full update for TAXI and DEPA
+                # Full update for STUP, PUSH, TAXI, DEPA
                 aircraft.update(data)
                 if old_status != status:
                     aircraft['timestamp'] = datetime.now(timezone.utc).isoformat()
         else:
-            # New aircraft - only TAXI or DEPA should create new entries
-            if status in ['TAXI', 'DEPA']:
+            # New aircraft - STUP, PUSH, TAXI, or DEPA can create entries
+            if status in ['STUP', 'PUSH', 'TAXI', 'DEPA']:
                 data['timestamp'] = datetime.now(timezone.utc).isoformat()
                 aircraft_data[airport].append(data)
             else:
@@ -178,14 +189,17 @@ def fetch_metar(airport):
         wind_dir_from = obs.wind_dir_from.value() if obs.wind_dir_from else None
         wind_dir_to = obs.wind_dir_to.value() if obs.wind_dir_to else None
 
-        # Check for CAVOK
+        # NCD (No Cloud Detected) is represented as [('NCD', None, None)]
+        sky_clear = not obs.sky or (len(obs.sky) == 1 and obs.sky[0][0] == 'NCD')
+
         is_cavok = (
             obs.vis and obs.vis.value('M') >= 9999 and
-            not obs.sky and not obs.weather
+            sky_clear and
+            not obs.weather
         )
         
         if is_cavok:
-            visibility = 'CAVOK'
+            visibility = None
             clouds = []
             weather = None
         else:
