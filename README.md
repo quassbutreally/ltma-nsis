@@ -281,9 +281,9 @@ The plugin monitors four ground states set by controllers in EuroScope:
 | State | Display | Meaning |
 |-------|---------|---------|
 | `STUP` / `PUSH` | Grey background, no indicator | Aircraft is starting up or pushing back (optional display) |
-| `TAXI` | `/` (yellow) | Aircraft is taxiing |
-| `DEPA` | `X` (green) | Aircraft is cleared for takeoff |
-| `AIRBORNE` | `X 45` (green) | Aircraft is airborne (45 = minutes past the hour) |
+| `TAXI` | `/` | Aircraft is taxiing |
+| `DEPA` | `X` | Aircraft is cleared for takeoff |
+| `AIRBORNE` | `X 45` | Aircraft is airborne (45 = minutes past the hour) |
 
 **State Transitions:**
 - Setting ground state to empty (NSTS) sends a `CLEAR` status and removes the aircraft from the list
