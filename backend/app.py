@@ -32,9 +32,15 @@ VALID_AIRPORTS = {
     'EGKK',  # London Gatwick
     'EGSS',  # London Stansted
     'EGGW',  # London Luton
-    'EGLC',  # London City
-    'EGBB',  # Birmingham
-    'EGNX'   # East Midlands
+    'EGLC'  # London City
+}
+
+AIRPORT_ELEVATIONS = {
+    'EGLL' : 83,
+    'EGKK' : 203,
+    'EGSS' : 348,
+    'EGGW' : 527,
+    'EGLC' : 20
 }
 
 # In-memory storage
@@ -44,7 +50,6 @@ aircraft_data = {}
 # METAR cache
 # Structure: {airport: (timestamp, parsed_data)}
 metar_cache = {}
-
 
 # ============================================================================
 # Aircraft Status Endpoints
@@ -270,10 +275,25 @@ def fetch_metar(airport):
         temp = obs.temp.value('C') if obs.temp else None
         dewpoint = obs.dewpt.value('C') if obs.dewpt else None
 
-        # Parse QNH
+        # Parse QNH and calculate QFE
         qnh = None
+        qfe = None
+
         if obs.press:
-            qnh = f'{int(obs.press.value("HPA"))}hPa'
+            qnh_hpa = int(obs.press.value('HPA'))
+            qnh = f'{qnh_hpa}hPa'
+            
+            # Calculate QFE if we have airport elevation
+            elevation = AIRPORT_ELEVATIONS[airport]
+            if elevation is not None and obs.temp:
+                temp_k = obs.temp.value('C') + 273.15
+                elevation_m = elevation * 0.3048  # Convert feet to metres
+                qfe_hpa = round(qnh_hpa * (1 - (0.0065 * elevation_m) / temp_k) ** 5.2561)
+                qfe = f'{qfe_hpa}hPa'
+            elif elevation is not None:
+                # Fallback to approximation if no temperature
+                qfe_hpa = round(qnh_hpa - (elevation / 30))
+                qfe = f'{qfe_hpa}hPa'
 
         data = {
             'raw': raw,
@@ -292,7 +312,8 @@ def fetch_metar(airport):
             'clouds': clouds,
             'temp': temp,
             'dewpoint': dewpoint,
-            'qnh': qnh
+            'qnh': qnh,
+            'qfe' : qfe
         }
 
         # Cache the result
@@ -303,6 +324,29 @@ def fetch_metar(airport):
     except Exception as e:
         logger.error(f"Error fetching METAR for {airport}: {e}", exc_info=True)
         return None
+    
+def get_airport_elevation(airport):
+    """Fetch airport elevation from VATSIM AIP API with caching"""
+    if airport in elevation_cache:
+        return elevation_cache[airport]
+    
+    try:
+        response = requests.get(
+            f'https://api.vatsim.net/api/airports/{airport}',
+            timeout=5
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            elevation = data['data']['altitude_ft']
+            elevation_cache[airport] = elevation
+            logger.info(f"Cached elevation for {airport}: {elevation}ft")
+            return elevation
+            
+    except Exception as e:
+        logger.error(f"Error fetching elevation for {airport}: {e}")
+    
+    return None
 
     
 @app.route('/api/weather/<airport>', methods=['GET'])
