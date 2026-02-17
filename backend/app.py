@@ -79,7 +79,7 @@ def status_update():
         if not all([callsign, airport, status]):
             return jsonify({'error': 'Missing required fields'}), 400
         
-         # Validate airport
+        # Validate airport
         if airport not in VALID_AIRPORTS:
             logger.debug(f"Ignoring update for unconfigured airport: {airport} ({callsign})")
             return jsonify({
@@ -289,10 +289,6 @@ def fetch_metar(airport):
                 temp_k = obs.temp.value('C') + 273.15
                 elevation_m = elevation * 0.3048  # Convert feet to metres
                 qfe_hpa = round(qnh_hpa * (1 - (0.0065 * elevation_m) / temp_k) ** 5.2561)
-                qfe = f'{qfe_hpa}hPa'
-            elif elevation is not None:
-                # Fallback to approximation if no temperature
-                qfe_hpa = round(qnh_hpa - (elevation / 30))
                 qfe = f'{qfe_hpa}hPa'
 
         data = {
