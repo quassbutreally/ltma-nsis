@@ -27,6 +27,22 @@ METAR_CACHE_TTL = 300  # 5 minutes
 AIRBORNE_CLEANUP_INTERVAL = 180  # 3 minutes (align with frontend display time)
 AIRBORNE_RETENTION_TIME = 180  # 3 minutes (match frontend DEPARTED_DISPLAY_TIME)
 
+VALID_AIRPORTS = {
+    'EGLL',  # London Heathrow
+    'EGKK',  # London Gatwick
+    'EGSS',  # London Stansted
+    'EGGW',  # London Luton
+    'EGLC'  # London City
+}
+
+AIRPORT_ELEVATIONS = {
+    'EGLL' : 83,
+    'EGKK' : 203,
+    'EGSS' : 348,
+    'EGGW' : 527,
+    'EGLC' : 20
+}
+
 # In-memory storage
 # Structure: {airport_code: [{callsign, status, sid, timestamp, ...}]}
 aircraft_data = {}
@@ -34,7 +50,6 @@ aircraft_data = {}
 # METAR cache
 # Structure: {airport: (timestamp, parsed_data)}
 metar_cache = {}
-
 
 # ============================================================================
 # Aircraft Status Endpoints
@@ -63,6 +78,14 @@ def status_update():
         
         if not all([callsign, airport, status]):
             return jsonify({'error': 'Missing required fields'}), 400
+        
+        # Validate airport
+        if airport not in VALID_AIRPORTS:
+            logger.debug(f"Ignoring update for unconfigured airport: {airport} ({callsign})")
+            return jsonify({
+                'success': False, 
+                'error': 'Airport not configured'
+            }), 200
         
         valid_statuses = ['STUP', 'PUSH', 'TAXI', 'DEPA', 'AIRBORNE', 'CLEAR']
         if status not in valid_statuses:
@@ -189,12 +212,33 @@ def fetch_metar(airport):
         wind_dir_from = obs.wind_dir_from.value() if obs.wind_dir_from else None
         wind_dir_to = obs.wind_dir_to.value() if obs.wind_dir_to else None
 
-        # NCD (No Cloud Detected) is represented as [('NCD', None, None)]
-        sky_clear = not obs.sky or (len(obs.sky) == 1 and obs.sky[0][0] == 'NCD')
+        # Check for CAVOK
+        # CAVOK = vis 10km+, no cloud below 5000ft, no CB/TCU, no significant weather
+        sky_clear_below_5000 = True
+        has_cb_tcu = False
+
+        if obs.sky:
+            for layer in obs.sky:
+                cover, height, cloud_type = layer
+                
+                # Skip NCD
+                if cover == 'NCD':
+                    continue
+                    
+                # Check for CB or TCU
+                if cloud_type and cloud_type in ['CB', 'TCU']:
+                    has_cb_tcu = True
+                    break
+                
+                # Check if cloud is below 5000ft
+                if height and height.value('FT') < 5000:
+                    sky_clear_below_5000 = False
+                    break
 
         is_cavok = (
             obs.vis and obs.vis.value('M') >= 9999 and
-            sky_clear and
+            sky_clear_below_5000 and
+            not has_cb_tcu and
             not obs.weather
         )
         
@@ -231,10 +275,21 @@ def fetch_metar(airport):
         temp = obs.temp.value('C') if obs.temp else None
         dewpoint = obs.dewpt.value('C') if obs.dewpt else None
 
-        # Parse QNH
+        # Parse QNH and calculate QFE
         qnh = None
+        qfe = None
+
         if obs.press:
-            qnh = f'{int(obs.press.value("HPA"))}hPa'
+            qnh_hpa = int(obs.press.value('HPA'))
+            qnh = f'{qnh_hpa}hPa'
+            
+            # Calculate QFE if we have airport elevation
+            elevation = AIRPORT_ELEVATIONS[airport]
+            if elevation is not None and obs.temp:
+                temp_k = obs.temp.value('C') + 273.15
+                elevation_m = elevation * 0.3048  # Convert feet to metres
+                qfe_hpa = round(qnh_hpa * (1 - (0.0065 * elevation_m) / temp_k) ** 5.2561)
+                qfe = f'{qfe_hpa}hPa'
 
         data = {
             'raw': raw,
@@ -253,7 +308,8 @@ def fetch_metar(airport):
             'clouds': clouds,
             'temp': temp,
             'dewpoint': dewpoint,
-            'qnh': qnh
+            'qnh': qnh,
+            'qfe' : qfe
         }
 
         # Cache the result
@@ -264,6 +320,29 @@ def fetch_metar(airport):
     except Exception as e:
         logger.error(f"Error fetching METAR for {airport}: {e}", exc_info=True)
         return None
+    
+def get_airport_elevation(airport):
+    """Fetch airport elevation from VATSIM AIP API with caching"""
+    if airport in elevation_cache:
+        return elevation_cache[airport]
+    
+    try:
+        response = requests.get(
+            f'https://api.vatsim.net/api/airports/{airport}',
+            timeout=5
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            elevation = data['data']['altitude_ft']
+            elevation_cache[airport] = elevation
+            logger.info(f"Cached elevation for {airport}: {elevation}ft")
+            return elevation
+            
+    except Exception as e:
+        logger.error(f"Error fetching elevation for {airport}: {e}")
+    
+    return None
 
     
 @app.route('/api/weather/<airport>', methods=['GET'])

@@ -265,7 +265,7 @@ function createWeatherBox(config) {
                 </div>
                 <div class="weather-qnh">
                     <span class="weather-qnh-label">QFE:</span>
-                    <span class="weather-qnh-value">N/A</span>
+                    <span class="weather-qnh-value"></span>
                 </div>
             </div>
         </div>
@@ -309,8 +309,10 @@ async function updateWeatherBox(box, airport, config) {
  */
 function renderWeatherFields(box, data) {
     const fieldsContainer = box.querySelector('.weather-fields');
-    const qnhValue = box.querySelector('.weather-qnh-value');
-    fieldsContainer.innerHTML = '';
+    const qnhValue = box.querySelectorAll('.weather-qnh-value')[0];
+    const qfeValue = box.querySelectorAll('.weather-qnh-value')[1];
+
+    fieldsContainer.innerHTML = '';  // Clear placeholder FIRST
 
     // Time of issue
     if (data.toi) {
@@ -345,8 +347,8 @@ function renderWeatherFields(box, data) {
     
     // Temperature and dewpoint
     if (data.temp !== null && data.dewpoint !== null) {
-        const temp = String(Math.round(data.temp)).padStart(2, '0');
-        const dewpoint = String(Math.round(data.dewpoint)).padStart(2, '0');
+        const temp = Math.round(data.temp) >= 0 ? String(Math.round(data.temp)).padStart(2, '0') : "M" + String(Math.abs(Math.round(data.temp))).padStart(2, '0');
+        const dewpoint = Math.round(data.dewpoint) >= 0 ? String(Math.round(data.dewpoint)).padStart(2, '0') : "M" + String(Math.abs(Math.round(data.dewpoint))).padStart(2, '0');
         fieldsContainer.appendChild(
             createWeatherField('TEMP/DP', `${temp}/${dewpoint}`)
         );
@@ -355,6 +357,14 @@ function renderWeatherFields(box, data) {
     // QNH
     if (data.qnh) {
         qnhValue.textContent = data.qnh.replace('hPa', 'A');
+    } else {
+        qfeValue.textContent = 'N/A';
+    }
+    // QFE
+    if (data.qfe) {
+        qfeValue.textContent = data.qfe.replace('hPa', 'A');
+    } else {
+        qfeValue.textContent = 'N/A';
     }
 }
 
