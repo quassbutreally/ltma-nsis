@@ -345,8 +345,8 @@ function renderWeatherFields(box, data) {
     
     // Temperature and dewpoint
     if (data.temp !== null && data.dewpoint !== null) {
-        const temp = String(Math.round(data.temp)).padStart(2, '0');
-        const dewpoint = String(Math.round(data.dewpoint)).padStart(2, '0');
+        const temp = Math.round(data.temp) >= 0 ? String(Math.round(data.temp)).padStart(2, '0') : "M" + String(Math.abs(Math.round(data.temp))).padStart(2, '0');
+        const dewpoint = Math.round(data.dewpoint) >= 0 ? String(Math.round(data.dewpoint)).padStart(2, '0') : "M" + String(Math.abs(Math.round(data.dewpoint))).padStart(2, '0');
         fieldsContainer.appendChild(
             createWeatherField('TEMP/DP', `${temp}/${dewpoint}`)
         );
