@@ -440,7 +440,7 @@ function renderWeatherFields(box, data) {
 
     fieldsContainer.innerHTML = '';  // Clear placeholder
 
-    // Time of issue
+    // TOI
     if (data.toi) {
         fieldsContainer.appendChild(createWeatherField('TOI', `${data.toi}`));
     }
@@ -466,12 +466,16 @@ function renderWeatherFields(box, data) {
         fieldsContainer.appendChild(createWeatherField(label, value));
     }
     
-    // Spacer to push temp/dp to bottom
+    // Spacer to push temp/dp and LVP to bottom
     const spacer = document.createElement('div');
     spacer.className = 'weather-fields-spacer';
     fieldsContainer.appendChild(spacer);
     
-    // Temperature and dewpoint (handle negative temps with M prefix)
+    // Bottom row with Temp/Dewpoint and LVP side-by-side
+    const bottomRow = document.createElement('div');
+    bottomRow.className = 'weather-bottom-row';
+    
+    // Temperature and dewpoint (left side)
     if (data.temp !== null && data.dewpoint !== null) {
         const temp = Math.round(data.temp) >= 0 ? 
             String(Math.round(data.temp)).padStart(2, '0') : 
@@ -479,10 +483,16 @@ function renderWeatherFields(box, data) {
         const dewpoint = Math.round(data.dewpoint) >= 0 ? 
             String(Math.round(data.dewpoint)).padStart(2, '0') : 
             "M" + String(Math.abs(Math.round(data.dewpoint))).padStart(2, '0');
-        fieldsContainer.appendChild(
-            createWeatherField('TEMP/DP', `${temp}/${dewpoint}`)
-        );
+        
+        const tempField = createWeatherField('TEMP/DP', `${temp}/${dewpoint}`);
+        bottomRow.appendChild(tempField);
     }
+    
+    // LVP indicator (right side)
+    const lvpField = createLVPField(data.lvp);
+    bottomRow.appendChild(lvpField);
+    
+    fieldsContainer.appendChild(bottomRow);
     
     // QNH
     if (data.qnh) {
@@ -522,6 +532,41 @@ function createWeatherField(label, value) {
     row.appendChild(valueSpan);
     
     return row;
+}
+
+/**
+ * Create LVP indicator field with appropriate styling
+ * 
+ * @param {string} lvpState - 'OFF', 'SAFE', or 'ON'
+ * @returns {HTMLElement} The created LVP field element
+ */
+function createLVPField(lvpState) {
+    const field = document.createElement('div');
+    field.className = 'weather-field weather-lvp';
+    
+    const label = document.createElement('span');
+    label.className = 'weather-label';
+    label.textContent = 'LVP:';
+    
+    const value = document.createElement('span');
+    value.className = 'weather-value lvp-value';
+    
+    // Apply styling based on state
+    if (lvpState === 'ON') {
+        value.textContent = 'VIS2';
+        value.classList.add('lvp-on');
+    } else if (lvpState === 'SAFE') {
+        value.textContent = 'SAFE';
+        value.classList.add('lvp-safe');
+    } else {
+        value.textContent = 'OFF';
+        value.classList.add('lvp-off');
+    }
+    
+    field.appendChild(label);
+    field.appendChild(value);
+    
+    return field;
 }
 
 // ============================================================================

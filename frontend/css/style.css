@@ -195,7 +195,7 @@ header h1 {
 .weather-field {
     display: grid;
     grid-template-columns: 100px 1fr;
-    gap: 8px;
+    gap: 4px;
     align-items: start;
     min-height: 24px;
 }
@@ -219,6 +219,48 @@ header h1 {
     color: #666;
     font-style: italic;
     font-size: 12px;
+}
+
+/* Bottom row with temp/dp and LVP side by side */
+.weather-bottom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    margin-right: 30px;
+    gap: 0;
+    align-items: baseline;
+}
+
+.weather-bottom-row .weather-field {
+    align-items: center;  /* Center content vertically */
+}
+
+.weather-lvp {
+    text-align: right;
+    grid-template-columns: auto auto;  /* Both columns auto-width, not 1fr 1fr 1fr */
+    justify-content: end;  /* Push both to the right */
+    gap: 4px;  /* Match the global gap */
+}
+
+/* LVP value styling */
+.lvp-value {
+    padding: 2px 4px;
+    border-radius: 3px;
+    display: inline-block;  /* Don't stretch to full width */
+}
+
+.lvp-off {
+    background-color: transparent;
+    color: #ffffff;
+}
+
+.lvp-safe {
+    background-color: #cc9900;  /* Darker yellow/orange */
+    color: #000000;  /* Black text for better contrast */
+}
+
+.lvp-on {
+    background-color: #ff0000;
+    color: #ffffff;
 }
 
 .weather-qnh-row {

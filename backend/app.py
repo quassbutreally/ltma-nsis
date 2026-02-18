@@ -227,6 +227,8 @@ def fetch_metar(airport):
         sky_clear_below_5000 = True
         has_cb_tcu = False
 
+        lvp_state = 'OFF'  # Default
+
         if obs.sky:
             for layer in obs.sky:
                 cover, height, cloud_type = layer
@@ -278,6 +280,36 @@ def fetch_metar(airport):
                         'height': int(height.value('FT'))
                     })
 
+            # Check visibility
+            vis_lvp = False
+            if obs.vis:
+                vis_m = obs.vis.value('M')
+                if vis_m <= 600:
+                    vis_lvp = True
+                    lvp_state = 'ON'
+                elif vis_m <= 1500:
+                    vis_lvp = True
+                    if lvp_state == 'OFF':
+                        lvp_state = 'SAFE'
+
+            # Check cloud ceiling (lowest cloud base)
+            if obs.sky:
+                lowest_cloud = None
+                for layer in obs.sky:
+                    cover, height, _ = layer
+                    # Only count BKN or OVC as ceilings
+                    if cover in ['BKN', 'OVC'] and height:
+                        height_ft = height.value('FT')
+                        if lowest_cloud is None or height_ft < lowest_cloud:
+                            lowest_cloud = height_ft
+                
+                if lowest_cloud is not None:
+                    if lowest_cloud <= 200:
+                        lvp_state = 'ON'
+                    elif lowest_cloud <= 300:
+                        if lvp_state == 'OFF':
+                            lvp_state = 'SAFE'
+
             # Parse weather
             weather = obs.present_weather() if obs.weather else None
 
@@ -306,6 +338,7 @@ def fetch_metar(airport):
             'airport': airport,
             'toi': toi,
             'cavok': is_cavok,
+            'lvp': lvp_state,
             'wind': {
                 'direction': wind_dir,
                 'speed': wind_speed,
