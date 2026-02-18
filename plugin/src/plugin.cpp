@@ -80,7 +80,18 @@ public:
         }
         std::string sid = flightPlan.GetFlightPlanData().GetSidName();
         std::string squawk = flightPlan.GetControllerAssignedData().GetSquawk();
-        std::string route = flightPlan.GetFlightPlanData().GetRoute();
+
+        auto extractedRoute = flightPlan.GetExtractedRoute();
+        int routePoints = extractedRoute.GetPointsNumber();
+
+        std::string route;
+
+        for (int i = 0; i < routePoints; i++)
+        {
+            auto point = extractedRoute.GetPointName(i);
+            route += point;
+            route += " ";
+        }
 
         AircraftState state;
         state.callsign = callsign;
