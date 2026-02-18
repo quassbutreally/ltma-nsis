@@ -333,6 +333,28 @@ header h1 {
     font-weight: bold;
 }
 
+/* Weather-only mode (full width, side-by-side) */
+.content-area.weather-only-mode {
+    display: block !important;
+}
+
+.content-area.weather-only-mode #weather-sections {
+    width: 100%;
+    height: 100%;
+}
+
+.weather-only-layout {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    height: 100%;
+}
+
+.weather-only-layout .weather-box {
+    flex: 1;
+    min-width: 0;
+}
+
 /* Departure Lists */
 .departure-lists {
     min-height: 0;

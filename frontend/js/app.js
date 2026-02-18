@@ -3,10 +3,13 @@
  * 
  * Main application logic for displaying real-time departure lists
  * and weather information for VATSIM controllers.
+ * 
+ * @author VATSIM UK
+ * @version 1.0.0
  */
 
 // ============================================================================
-// Configuration
+// Configuration Constants
 // ============================================================================
 
 const API_BASE_URL = 'http://localhost:5000/api';
@@ -37,13 +40,18 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * Initialize UTC clock display
+ * Initialize and start the UTC clock display
+ * Updates every second to show current UTC time in HH:MM:SS format
  */
 function initializeClock() {
     updateClock();
     setInterval(updateClock, 1000);
 }
 
+/**
+ * Update the clock display with current UTC time
+ * @private
+ */
 function updateClock() {
     const now = new Date();
     const hours = String(now.getUTCHours()).padStart(2, '0');
@@ -53,7 +61,9 @@ function updateClock() {
 }
 
 /**
- * Initialize sidebar buttons (sector groups and positions)
+ * Initialize sidebar buttons for sector groups and positions
+ * Creates sector group buttons dynamically from SECTOR_GROUPS config
+ * and attaches click handlers to position buttons
  */
 function initializeSidebar() {
     // Create sector group buttons
@@ -84,6 +94,10 @@ function initializeSidebar() {
 
 /**
  * Handle sector group button click
+ * Updates button states, loads position buttons for the sector,
+ * and automatically selects the default position if configured
+ * 
+ * @param {string} sectorId - The ID of the clicked sector group
  */
 function handleSectorClick(sectorId) {
     currentSectorGroup = sectorId;
@@ -115,6 +129,9 @@ function handleSectorClick(sectorId) {
 
 /**
  * Update the top 8 position buttons based on selected sector
+ * Enables buttons for configured positions and disables unused slots
+ * 
+ * @param {string} sectorId - The ID of the sector group
  */
 function updatePositionButtons(sectorId) {
     const positionButtons = document.querySelectorAll('.position-btn');
@@ -139,6 +156,10 @@ function updatePositionButtons(sectorId) {
 
 /**
  * Handle position button click
+ * Handles position aliases and linked positions (for situational awareness displays)
+ * Updates button highlighting and renders position content
+ * 
+ * @param {string} positionId - The ID of the clicked position
  */
 function handlePositionClick(positionId) {
     const sectorConfig = POSITION_CONFIGS[currentSectorGroup];
@@ -177,6 +198,8 @@ function handlePositionClick(positionId) {
 
 /**
  * Render content for the selected position
+ * Validates section percentages, renders weather and departure sections,
+ * and initiates data fetching
  */
 function renderPositionContent() {
     if (!currentSectorGroup || !currentPosition) return;
@@ -186,16 +209,70 @@ function renderPositionContent() {
     
     if (!positionConfig) return;
     
-    validatePercentages(positionConfig.sections);
-    renderWeatherSections(positionConfig.weather_sections || []);
-    renderDepartureSections(positionConfig.sections);
-    fetchDepartures();
+    // Always clean up previous layout first
+    const weatherContainer = document.getElementById('weather-sections');
+    const departureContainer = document.getElementById('departure-lists');
+    const contentArea = weatherContainer.parentElement;
+    
+    // Remove any layout classes
+    contentArea.classList.remove('weather-only-mode');
+    weatherContainer.classList.remove('weather-only-layout');
+    departureContainer.style.display = '';
+    
+    // Check if this is a weather-only layout
+    if (positionConfig.layout === 'weather_only') {
+        renderWeatherOnlyLayout(positionConfig.weather_sections || []);
+    } else {
+        // Standard layout with departure lists
+        validatePercentages(positionConfig.sections);
+        renderWeatherSections(positionConfig.weather_sections || []);
+        renderDepartureSections(positionConfig.sections);
+        fetchDepartures();
+    }
+}
+
+/**
+ * Render weather-only layout (full width, side-by-side)
+ * Used for positions like Northolt that only display weather
+ * 
+ * @param {Array} weatherConfigs - Array of weather section configurations
+ */
+async function renderWeatherOnlyLayout(weatherConfigs) {
+    const weatherContainer = document.getElementById('weather-sections');
+    const departureContainer = document.getElementById('departure-lists');
+    const contentArea = weatherContainer.parentElement; // .content-area
+    
+    // Clear both containers
+    weatherContainer.innerHTML = '';
+    departureContainer.innerHTML = '';
+    
+    // Hide departure container
+    departureContainer.style.display = 'none';
+    
+    // Make content-area and weather-sections full width
+    contentArea.classList.add('weather-only-mode');
+    weatherContainer.classList.add('weather-only-layout');
+    
+    // Create weather boxes
+    for (const config of weatherConfigs) {
+        const weatherBox = createWeatherBox(config);
+        weatherContainer.appendChild(weatherBox);
+        await updateWeatherBox(weatherBox, config.airport, config);
+    }
+    
+    startWeatherRefresh(weatherConfigs);
 }
 
 /**
  * Validate that section percentages add up to 100
+ * Logs a warning if percentages don't sum to 100%
+ * 
+ * @param {Array} sections - Array of section configurations
  */
 function validatePercentages(sections) {
+    if (sections == null)
+        return;
+
     const total = sections.reduce((sum, s) => sum + s.height_percent, 0);
     
     if (total !== 100) {
@@ -207,7 +284,8 @@ function validatePercentages(sections) {
 }
 
 /**
- * Clear all main content and stop timers
+ * Clear all main content and stop refresh timers
+ * Called when switching positions or sectors
  */
 function clearMainContent() {
     if (weatherRefreshTimer) {
@@ -215,16 +293,29 @@ function clearMainContent() {
         weatherRefreshTimer = null;
     }
     
-    document.getElementById('weather-sections').innerHTML = '';
-    document.getElementById('departure-lists').innerHTML = '';
+    const weatherContainer = document.getElementById('weather-sections');
+    const departureContainer = document.getElementById('departure-lists');
+    const contentArea = weatherContainer.parentElement;
+    
+    weatherContainer.innerHTML = '';
+    weatherContainer.classList.remove('weather-only-layout');
+    
+    departureContainer.innerHTML = '';
+    departureContainer.style.display = '';
+    
+    contentArea.classList.remove('weather-only-mode');
 }
 
 // ============================================================================
-// Weather Panel
+// Weather Panel - Standard View
 // ============================================================================
 
 /**
  * Render weather sections for the current position
+ * Handles both standard weather boxes and composite views
+ * Fetches initial data and starts refresh timer
+ * 
+ * @param {Array} weatherConfigs - Array of weather section configurations
  */
 async function renderWeatherSections(weatherConfigs) {
     const container = document.getElementById('weather-sections');
@@ -232,7 +323,7 @@ async function renderWeatherSections(weatherConfigs) {
     
     for (const config of weatherConfigs) {
         if (config.type === 'composite') {
-           const compositeBox = await createCompositeWeatherBox(config);
+            const compositeBox = await createCompositeWeatherBox(config);
             container.appendChild(compositeBox);
         } else {  
             const weatherBox = createWeatherBox(config);
@@ -245,7 +336,13 @@ async function renderWeatherSections(weatherConfigs) {
 }
 
 /**
- * Create empty weather box structure
+ * Create empty weather box structure for a single airport
+ * Applies airport-specific background color from AIRPORT_COLORS config
+ * 
+ * @param {Object} config - Weather section configuration
+ * @param {string} config.airport - ICAO airport code
+ * @param {string} config.label - Display label for the airport
+ * @returns {HTMLElement} The created weather box element
  */
 function createWeatherBox(config) {
     const weatherBox = document.createElement('div');
@@ -280,95 +377,13 @@ function createWeatherBox(config) {
     return weatherBox;
 }
 
-async function createCompositeWeatherBox(config) {
-    const box = document.createElement('div');
-    box.className = 'weather-composite';
-    box.dataset.type = 'composite';
-    box.dataset.airports = JSON.stringify(config.airports);
-    
-    // Fetch weather for all airports
-    const weatherData = await Promise.all(
-        config.airports.map(async airport => {
-            try {
-                const response = await fetch(`${API_BASE_URL}/weather/${airport}`);
-                if (!response.ok) throw new Error('Failed to fetch');
-                return { airport, data: await response.json() };
-            } catch (error) {
-                console.error(`Failed to fetch weather for ${airport}:`, error);
-                return { airport, data: null };
-            }
-        })
-    );
-    
-    // Create 3x2 grid
-    const grid = document.createElement('div');
-    grid.className = 'composite-grid';
-    
-    weatherData.forEach(({ airport, data }) => {
-        const cell = createCompositeCell(airport, data);
-        grid.appendChild(cell);
-    });
-    
-    box.appendChild(grid);
-    return box;
-}
-
-function createCompositeCell(airport, data) {
-    const cell = document.createElement('div');
-    cell.className = 'composite-cell';
-    
-    if (!data) {
-        cell.innerHTML = `
-            <div class="composite-airport">${airport}</div>
-            <div class="composite-nodata">NO DATA</div>
-        `;
-        return cell;
-    }
-    
-    // Format temperature and dewpoint
-
-    var temp = '--'
-    if (data.temp != null) {
-        temp = Math.round(data.temp) >= 0 ? String(Math.round(data.temp)).padStart(2, '0') : "M" + String(Math.abs(Math.round(data.temp))).padStart(2, '0');
-    }
-
-    var dewpoint = '--'
-    if (data.dewpoint != null) {
-        dewpoint = Math.round(data.dewpoint) >= 0 ? String(Math.round(data.dewpoint)).padStart(2, '0') : "M" + String(Math.abs(Math.round(data.dewpoint))).padStart(2, '0');
-    }
-
-    const qnh = data.qnh ? data.qnh.replace('hPa', 'A') : 'N/A';
-    
-    // Build table HTML
-    let tableHTML = `
-        <div class="composite-airport">${airport}</div>
-        <table class="composite-table">
-            <tr><td>TOI:</td><td>${data.toi || '--'}Z</td></tr>
-            <tr><td>TEMP/DP:</td><td>${temp}/${dewpoint}</td></tr>
-            <tr><td>QNH:</td><td>${qnh}</td></tr>
-    `;
-    
-    // Add clouds - vertically stacked, highest first
-    if (data.cavok) {
-        tableHTML += '<tr><td>CLD:</td><td>CAVOK</td></tr>';
-    } else if (data.clouds && data.clouds.length > 0) {
-        const sortedClouds = [...data.clouds].sort((a, b) => b.height - a.height);
-        sortedClouds.forEach((cloud, index) => {
-            const label = index === 0 ? 'CLD:' : '';
-            tableHTML += `<tr><td>${label}</td><td>${cloud.cover} ${cloud.height}</td></tr>`;
-        });
-    } else {
-        tableHTML += '<tr><td>CLD:</td><td>SKC</td></tr>';
-    }
-    
-    tableHTML += '</table>';
-    cell.innerHTML = tableHTML;
-    
-    return cell;
-}
-
 /**
  * Fetch and display weather data for an airport
+ * Fetches METAR from backend, rebuilds box structure, and renders fields and wind wheel
+ * 
+ * @param {HTMLElement} box - The weather box element to update
+ * @param {string} airport - ICAO airport code
+ * @param {Object} config - Weather section configuration
  */
 async function updateWeatherBox(box, airport, config) {
     try {
@@ -397,14 +412,19 @@ async function updateWeatherBox(box, airport, config) {
 }
 
 /**
- * Render weather text fields
+ * Render weather text fields in a weather box
+ * Displays TOI, visibility, weather, clouds (3 layers), temp/dewpoint, QNH, and QFE
+ * Handles CAVOK conditions and negative temperatures with 'M' prefix
+ * 
+ * @param {HTMLElement} box - The weather box element
+ * @param {Object} data - Parsed METAR data from backend
  */
 function renderWeatherFields(box, data) {
     const fieldsContainer = box.querySelector('.weather-fields');
     const qnhValue = box.querySelectorAll('.weather-qnh-value')[0];
     const qfeValue = box.querySelectorAll('.weather-qnh-value')[1];
 
-    fieldsContainer.innerHTML = '';  // Clear placeholder FIRST
+    fieldsContainer.innerHTML = '';  // Clear placeholder
 
     // Time of issue
     if (data.toi) {
@@ -437,10 +457,14 @@ function renderWeatherFields(box, data) {
     spacer.className = 'weather-fields-spacer';
     fieldsContainer.appendChild(spacer);
     
-    // Temperature and dewpoint
+    // Temperature and dewpoint (handle negative temps with M prefix)
     if (data.temp !== null && data.dewpoint !== null) {
-        const temp = Math.round(data.temp) >= 0 ? String(Math.round(data.temp)).padStart(2, '0') : "M" + String(Math.abs(Math.round(data.temp))).padStart(2, '0');
-        const dewpoint = Math.round(data.dewpoint) >= 0 ? String(Math.round(data.dewpoint)).padStart(2, '0') : "M" + String(Math.abs(Math.round(data.dewpoint))).padStart(2, '0');
+        const temp = Math.round(data.temp) >= 0 ? 
+            String(Math.round(data.temp)).padStart(2, '0') : 
+            "M" + String(Math.abs(Math.round(data.temp))).padStart(2, '0');
+        const dewpoint = Math.round(data.dewpoint) >= 0 ? 
+            String(Math.round(data.dewpoint)).padStart(2, '0') : 
+            "M" + String(Math.abs(Math.round(data.dewpoint))).padStart(2, '0');
         fieldsContainer.appendChild(
             createWeatherField('TEMP/DP', `${temp}/${dewpoint}`)
         );
@@ -450,8 +474,9 @@ function renderWeatherFields(box, data) {
     if (data.qnh) {
         qnhValue.textContent = data.qnh.replace('hPa', 'A');
     } else {
-        qfeValue.textContent = 'N/A';
+        qnhValue.textContent = 'N/A';
     }
+    
     // QFE
     if (data.qfe) {
         qfeValue.textContent = data.qfe.replace('hPa', 'A');
@@ -461,7 +486,11 @@ function renderWeatherFields(box, data) {
 }
 
 /**
- * Create a weather field row
+ * Create a single weather field row with label and value
+ * 
+ * @param {string} label - Field label (e.g., 'TOI', 'VISIBILITY')
+ * @param {string} value - Field value
+ * @returns {HTMLElement} The created weather field element
  */
 function createWeatherField(label, value) {
     const row = document.createElement('div');
@@ -481,8 +510,127 @@ function createWeatherField(label, value) {
     return row;
 }
 
+// ============================================================================
+// Weather Panel - Composite View
+// ============================================================================
+
+/**
+ * Create composite weather box showing multiple airports in a grid
+ * Used for positions like TC Midlands that need to monitor several airports
+ * Displays TOI, temp/dewpoint, QNH, and clouds for each airport in a 3x2 grid
+ * 
+ * @param {Object} config - Composite weather configuration
+ * @param {string[]} config.airports - Array of ICAO airport codes to display
+ * @returns {Promise<HTMLElement>} The created composite weather box
+ */
+async function createCompositeWeatherBox(config) {
+    const box = document.createElement('div');
+    box.className = 'weather-composite';
+    box.dataset.type = 'composite';
+    box.dataset.airports = JSON.stringify(config.airports);
+    
+    // Fetch weather for all airports in parallel
+    const weatherData = await Promise.all(
+        config.airports.map(async airport => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/weather/${airport}`);
+                if (!response.ok) throw new Error('Failed to fetch');
+                return { airport, data: await response.json() };
+            } catch (error) {
+                console.error(`Failed to fetch weather for ${airport}:`, error);
+                return { airport, data: null };
+            }
+        })
+    );
+    
+    // Create 3x2 grid
+    const grid = document.createElement('div');
+    grid.className = 'composite-grid';
+    
+    weatherData.forEach(({ airport, data }) => {
+        const cell = createCompositeCell(airport, data);
+        grid.appendChild(cell);
+    });
+    
+    box.appendChild(grid);
+    return box;
+}
+
+/**
+ * Create a single cell in the composite weather grid
+ * Displays compact weather information in a table format
+ * 
+ * @param {string} airport - ICAO airport code
+ * @param {Object|null} data - Parsed METAR data (null if unavailable)
+ * @returns {HTMLElement} The created composite cell element
+ */
+function createCompositeCell(airport, data) {
+    const cell = document.createElement('div');
+    cell.className = 'composite-cell';
+    
+    if (!data) {
+        cell.innerHTML = `
+            <div class="composite-airport">${airport}</div>
+            <div class="composite-nodata">NO DATA</div>
+        `;
+        return cell;
+    }
+    
+    // Format temperature and dewpoint (handle negatives with M prefix)
+    var temp = '--'
+    if (data.temp != null) {
+        temp = Math.round(data.temp) >= 0 ? 
+            String(Math.round(data.temp)).padStart(2, '0') : 
+            "M" + String(Math.abs(Math.round(data.temp))).padStart(2, '0');
+    }
+
+    var dewpoint = '--'
+    if (data.dewpoint != null) {
+        dewpoint = Math.round(data.dewpoint) >= 0 ? 
+            String(Math.round(data.dewpoint)).padStart(2, '0') : 
+            "M" + String(Math.abs(Math.round(data.dewpoint))).padStart(2, '0');
+    }
+
+    const qnh = data.qnh ? data.qnh.replace('hPa', 'A') : 'N/A';
+    
+    // Build table HTML
+    let tableHTML = `
+        <div class="composite-airport">${airport}</div>
+        <table class="composite-table">
+            <tr><td>TOI:</td><td>${data.toi || '--'}Z</td></tr>
+            <tr><td>TEMP/DP:</td><td>${temp}/${dewpoint}</td></tr>
+            <tr><td>QNH:</td><td>${qnh}</td></tr>
+    `;
+    
+    // Add clouds - vertically stacked, highest first
+    if (data.cavok) {
+        tableHTML += '<tr><td>CLD:</td><td>CAVOK</td></tr>';
+    } else if (data.clouds && data.clouds.length > 0) {
+        const sortedClouds = [...data.clouds].sort((a, b) => b.height - a.height);
+        sortedClouds.forEach((cloud, index) => {
+            const label = index === 0 ? 'CLD:' : '';
+            tableHTML += `<tr><td>${label}</td><td>${cloud.cover} ${cloud.height}</td></tr>`;
+        });
+    } else {
+        tableHTML += '<tr><td>CLD:</td><td>SKC</td></tr>';
+    }
+    
+    tableHTML += '</table>';
+    cell.innerHTML = tableHTML;
+    
+    return cell;
+}
+
+// ============================================================================
+// Weather Refresh
+// ============================================================================
+
 /**
  * Start weather refresh timer
+ * Updates both standard weather boxes and composite views every 3 minutes
+ * Handles position changes by finding configs from current position
+ * 
+ * @param {Array} weatherConfigs - Array of weather section configurations (not currently used in refresh)
  */
 function startWeatherRefresh(weatherConfigs) {
     if (weatherRefreshTimer) {
@@ -535,7 +683,24 @@ function startWeatherRefresh(weatherConfigs) {
 // ============================================================================
 
 /**
- * Render SVG wind wheel
+ * Render SVG wind wheel showing wind direction and speed
+ * 
+ * Features:
+ * - 36 segments (10° each) representing wind direction
+ * - Active segment(s) highlighted white (single for steady, range for variable)
+ * - Wind direction arrow pointing inward
+ * - Centre box displaying steady wind speed
+ * - Min/Max speed labels in corners
+ * - Cardinal points (N/E/S/W) inside the ring
+ * - Bearing markers (every 30°) outside the ring
+ * 
+ * @param {HTMLElement} box - The weather box element containing the wind wheel
+ * @param {Object} wind - Wind data from METAR
+ * @param {number|null} wind.direction - Wind direction in degrees
+ * @param {number|null} wind.speed - Wind speed in knots
+ * @param {number|null} wind.gust - Gust speed in knots
+ * @param {number|null} wind.variable_from - Variable wind range start (degrees)
+ * @param {number|null} wind.variable_to - Variable wind range end (degrees)
  */
 function renderWindWheel(box, wind) {
     const container = box.querySelector('.weather-wind-wheel');
@@ -556,6 +721,7 @@ function renderWindWheel(box, wind) {
     svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
 
     // Coordinate conversion helpers
+    // Segments rotated -5° so 010 segment is centred on 010° bearing
     const toRadSegment = (deg) => (deg - 90 - 5) * Math.PI / 180;
     const toRad = (deg) => (deg - 90) * Math.PI / 180;
     
@@ -572,7 +738,12 @@ function renderWindWheel(box, wind) {
         drawSegment(startDeg, endDeg, active ? '#ffffff' : '#00aa00');
     }
 
-    // Helper: determine if segment should be highlighted
+    /**
+     * Determine if a segment should be highlighted based on wind direction
+     * @param {number} segmentIndex - Segment index (0-35)
+     * @param {Object} wind - Wind data
+     * @returns {boolean} True if segment should be highlighted
+     */
     function isSegmentActive(segmentIndex, wind) {
         if (wind.direction === null && wind.direction !== 0) return false;
 
@@ -596,7 +767,12 @@ function renderWindWheel(box, wind) {
         }
     }
 
-    // Helper: draw a single segment
+    /**
+     * Draw a single wind direction segment
+     * @param {number} startDeg - Segment start angle in degrees
+     * @param {number} endDeg - Segment end angle in degrees
+     * @param {string} colour - Fill colour for the segment
+     */
     function drawSegment(startDeg, endDeg, colour) {
         const segPolar = (angle, radius) => ({
             x: cx + radius * Math.cos(toRadSegment(angle)),
@@ -762,7 +938,10 @@ function renderWindWheel(box, wind) {
 // ============================================================================
 
 /**
- * Render departure list sections
+ * Render departure list sections for the current position
+ * Calculates available height and creates sections with percentage-based sizing
+ * 
+ * @param {Array} sectionConfigs - Array of departure section configurations
  */
 function renderDepartureSections(sectionConfigs) {
     const container = document.getElementById('departure-lists');
@@ -780,7 +959,19 @@ function renderDepartureSections(sectionConfigs) {
 }
 
 /**
- * Create a departure list section
+ * Create a single departure list section
+ * Builds header with toggle button and overflow indicator, and departure list container
+ * Calculates max rows based on available height
+ * 
+ * @param {Object} sectionConfig - Section configuration
+ * @param {string} sectionConfig.airport - ICAO airport code
+ * @param {string} sectionConfig.label - Display label for the section
+ * @param {number} sectionConfig.height_percent - Percentage of available height (must sum to 100 across all sections)
+ * @param {string[]} sectionConfig.sids - Array of SID prefixes to filter on
+ * @param {Array} sectionConfig.route_indicators - Array of route keyword mappings for display
+ * @param {Array} sectionConfig.required_route_keywords - Array of keywords that must be in route (AND filter with SID)
+ * @param {number} availableHeight - Available height in pixels for all sections
+ * @returns {HTMLElement} The created section element
  */
 function createSection(sectionConfig, availableHeight) {
     const section = document.createElement('div');
@@ -789,7 +980,7 @@ function createSection(sectionConfig, availableHeight) {
     section.dataset.sids = JSON.stringify(sectionConfig.sids);
     section.dataset.routeIndicators = JSON.stringify(sectionConfig.route_indicators || []);
     section.dataset.requiredRouteKeywords = JSON.stringify(sectionConfig.required_route_keywords || []);
-    section.dataset.showStarted = 'true';
+    section.dataset.showStarted = 'true';  // Default to showing STUP/PUSH aircraft
     
     const sectionHeight = Math.floor((sectionConfig.height_percent / 100) * availableHeight);
     const listHeight = sectionHeight - HEADER_HEIGHT;
@@ -806,7 +997,7 @@ function createSection(sectionConfig, availableHeight) {
         </div>
     `;
     
-    // Add toggle click handler
+    // Add toggle click handler for showing/hiding STUP/PUSH aircraft
     const toggleBtn = header.querySelector('.toggle-started');
     toggleBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -814,7 +1005,7 @@ function createSection(sectionConfig, availableHeight) {
         section.dataset.showStarted = (!currentState).toString();
         toggleBtn.textContent = currentState ? 'SHOW STARTED' : 'HIDE STARTED';
         
-        // Refresh just this section
+        // Refresh display
         fetchDepartures();
     });
     
@@ -829,9 +1020,9 @@ function createSection(sectionConfig, availableHeight) {
     return section;
 }
 
-
 /**
  * Fetch departure data from backend
+ * Updates connection status and triggers departure list updates
  */
 async function fetchDepartures() {
     if (!currentPosition) return;
@@ -855,6 +1046,10 @@ async function fetchDepartures() {
 
 /**
  * Update all departure list sections with new data
+ * Filters aircraft by SID and optionally by required route keywords
+ * Sorts aircraft by status (AIRBORNE > DEPA > TAXI > STUP/PUSH) then by timestamp
+ * 
+ * @param {Object} data - Departure data from backend, keyed by airport
  */
 function updateDepartures(data) {
     const sections = document.querySelectorAll('.airport-section');
@@ -866,7 +1061,7 @@ function updateDepartures(data) {
         const maxRows = parseInt(section.dataset.maxRows);
         const showStarted = section.dataset.showStarted === 'true';
         
-        // Filter aircraft for this section
+        // Filter aircraft for this section by SID and optional route keywords
         let aircraft = (data[airport] || []).filter(ac => {
             // Must have matching SID
             if (!ac.sid || !sids.some(sid => ac.sid.startsWith(sid))) {
@@ -892,7 +1087,7 @@ function updateDepartures(data) {
             );
         }
         
-        // Remove old airborne aircraft
+        // Remove old airborne aircraft (>3 minutes)
         aircraft = filterDepartedAircraft(aircraft);
         
         // Sort: AIRBORNE > DEPA > TAXI > STUP/PUSH, then oldest first
@@ -914,7 +1109,12 @@ function updateDepartures(data) {
 }
 
 /**
- * Update a single departure list section
+ * Update a single departure list section with filtered/sorted aircraft
+ * Displays aircraft up to maxRows and shows overflow count
+ * 
+ * @param {HTMLElement} section - The section element to update
+ * @param {Array} aircraft - Filtered and sorted aircraft array
+ * @param {number} maxRows - Maximum number of rows that fit in the section
  */
 function updateSection(section, aircraft, maxRows) {
     const list = section.querySelector('.departure-list');
@@ -935,7 +1135,24 @@ function updateSection(section, aircraft, maxRows) {
 }
 
 /**
- * Create a departure list item
+ * Create a departure list item for a single aircraft
+ * Displays callsign, squawk, SID (without suffix), route indicator, and status
+ * 
+ * Status indicators:
+ * - STUP/PUSH: Grey background, no indicator
+ * - TAXI: '/'
+ * - DEPA: 'X' 
+ * - AIRBORNE: 'X MM' (MM = minutes past the hour)
+ * 
+ * @param {Object} aircraft - Aircraft data
+ * @param {string} aircraft.callsign - Aircraft callsign
+ * @param {string} aircraft.squawk - Assigned squawk code
+ * @param {string} aircraft.sid - Full SID name (e.g., 'BPK7G')
+ * @param {string} aircraft.route - Filed route
+ * @param {string} aircraft.status - Aircraft status (STUP/PUSH/TAXI/DEPA/AIRBORNE)
+ * @param {string} aircraft.timestamp - ISO timestamp of state change
+ * @param {Array} routeIndicators - Array of route keyword mappings for this section
+ * @returns {HTMLElement} The created departure item element
  */
 function createDepartureItem(aircraft, routeIndicators) {
     const item = document.createElement('div');
@@ -951,14 +1168,13 @@ function createDepartureItem(aircraft, routeIndicators) {
     squawk.className = 'squawk';
     squawk.textContent = aircraft.squawk || '----';
 
-    // SID
+    // SID (strip suffix - just letters before digits)
     const sid = document.createElement('span');
     sid.className = 'sid';
-    // Strip suffix - just take letters before any digits
     const sidName = aircraft.sid ? aircraft.sid.replace(/\d.*$/, '') : '----';
     sid.textContent = sidName;
 
-    // Route indicator (matched keyword)
+    // Route indicator (first matching keyword)
     const matched = routeIndicators.find(ri => 
         aircraft.route && aircraft.route.includes(ri.keyword)
     );
@@ -971,7 +1187,7 @@ function createDepartureItem(aircraft, routeIndicators) {
     indicator.className = 'indicator';
 
     if (aircraft.status === 'PUSH' || aircraft.status === 'STUP') {
-        item.classList.add('started');
+        item.classList.add('started');  // Grey background
     } else if (aircraft.status === 'TAXI') {
         indicator.textContent = '/';
         indicator.classList.add('taxi');
@@ -995,6 +1211,10 @@ function createDepartureItem(aircraft, routeIndicators) {
 
 /**
  * Filter out airborne aircraft older than 3 minutes
+ * Keeps all STUP, PUSH, TAXI, and DEPA aircraft regardless of age
+ * 
+ * @param {Array} aircraft - Array of aircraft to filter
+ * @returns {Array} Filtered aircraft array
  */
 function filterDepartedAircraft(aircraft) {
     const now = Date.now();
@@ -1018,7 +1238,8 @@ function filterDepartedAircraft(aircraft) {
 // ============================================================================
 
 /**
- * Check server health
+ * Check server health via /health endpoint
+ * Updates connection status indicator
  */
 async function checkServerConnection() {
     try {
@@ -1031,7 +1252,9 @@ async function checkServerConnection() {
 }
 
 /**
- * Update connection status indicator
+ * Update connection status indicator in header
+ * 
+ * @param {boolean} connected - True if server is reachable and healthy
  */
 function updateConnectionStatus(connected) {
     const statusElement = document.getElementById('connection-status');
@@ -1041,6 +1264,7 @@ function updateConnectionStatus(connected) {
 
 /**
  * Start departure list auto-refresh
+ * Fetches departure data and checks server connection every 2 seconds
  */
 function startAutoRefresh() {
     departureRefreshTimer = setInterval(() => {
@@ -1054,7 +1278,11 @@ function startAutoRefresh() {
 // ============================================================================
 
 /**
- * Debounce helper
+ * Debounce helper to limit function calls during rapid events
+ * 
+ * @param {Function} func - Function to debounce
+ * @param {number} wait - Wait time in milliseconds
+ * @returns {Function} Debounced function
  */
 function debounce(func, wait) {
     let timeout;
@@ -1066,6 +1294,7 @@ function debounce(func, wait) {
 
 /**
  * Recalculate section heights on window resize
+ * Rebuilds departure sections with new available height
  */
 window.addEventListener('resize', debounce(() => {
     if (!currentPosition) return;
@@ -1074,7 +1303,10 @@ window.addEventListener('resize', debounce(() => {
     const positionConfig = sectorConfig?.positions.find(p => p.id === currentPosition);
     
     if (positionConfig) {
-        renderDepartureSections(positionConfig.sections);
-        fetchDepartures();
+        // Only render departure sections if not weather-only layout
+        if (positionConfig.layout !== 'weather_only') {
+            renderDepartureSections(positionConfig.sections);
+            fetchDepartures();
+        }
     }
 }, 250));

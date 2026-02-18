@@ -1156,5 +1156,55 @@ const POSITION_CONFIGS = {
         "alias_for" : "LC_DIR"
       },
     ]
+  },
+  "NORTHOLT" : {
+    "default_position" : "BENSON_WX",
+    "positions" : [
+      {
+        "id" : "BENSON_WX",
+        "name" : "BENSON WX",
+        "layout": "weather_only",
+        "weather_sections" : [
+          {
+            "airport" : "EGLL",
+            "label" : "HEATHROW"
+          },
+          {
+            "airport" : "EGUB",
+            "label" : "BENSON"
+          }
+        ]
+      },
+      {
+        "id" : "BOSCOMBE_WX",
+        "name" : "BOSCOMBE WX",
+        "layout": "weather_only",
+        "weather_sections" : [
+          {
+            "airport" : "EGLL",
+            "label" : "HEATHROW"
+          },
+          {
+            "airport" : "EGDM",
+            "label" : "BOSCOMBE DOWN"
+          }
+        ]
+      },
+      {
+        "id" : "BRIZE_WX",
+        "name" : "BRIZE WX",
+        "layout": "weather_only",
+        "weather_sections" : [
+          {
+            "airport" : "EGLL",
+            "label" : "HEATHROW"
+          },
+          {
+            "airport" : "EGVN",
+            "label" : "BRIZE NORTON"
+          }
+        ]
+      },
+    ]
   }
 };

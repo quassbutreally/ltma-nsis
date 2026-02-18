@@ -35,6 +35,9 @@ VALID_AIRPORTS = {
     'EGLC',  # London City
     'EGBB',  # Birmingham
     'EGNX',  # East Midlands
+    'EGUB',  # Benson
+    'EGDM',  # Boscombe Down
+    'EGVN',  # Brize Norton
 }
 
 AIRPORT_ELEVATIONS = {
@@ -44,7 +47,10 @@ AIRPORT_ELEVATIONS = {
     'EGGW' : 527,
     'EGLC' : 20,
     'EGBB' : 339,
-    'EGNX' : 306
+    'EGNX' : 306,
+    'EGUB' : 203,
+    'EGDM' : 407,
+    'EGVN' : 287
 }
 
 # In-memory storage
