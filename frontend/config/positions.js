@@ -667,7 +667,7 @@ const POSITION_CONFIGS = {
             "height_percent" : 15,
             "sids" : ["CLN"],
                 "route_indicators" : [
-                  { "keyword" : "DVR", "display" : "DVR" }
+                  { "keyword" : "ABTUM", "display" : "DVR" }
                 ]
           },
           {
@@ -683,7 +683,7 @@ const POSITION_CONFIGS = {
             "sids" : ["MATCH"],
                 "route_indicators" : [
                   { "keyword" : "ITVIP", "display" : "ITVIP" },
-                  { "keyword" : "DVR", "display" : "DVR" }
+                  { "keyword" : "ABTUM", "display" : "DVR" }
                 ]
           }
         ]
@@ -716,7 +716,7 @@ const POSITION_CONFIGS = {
             "height_percent" : 15,
             "sids" : ["CLN"],
                 "route_indicators" : [
-                  { "keyword" : "DVR", "display" : "DVR" }
+                  { "keyword" : "ABTUM", "display" : "DVR" }
                 ]
           },
           {
@@ -732,7 +732,7 @@ const POSITION_CONFIGS = {
             "sids" : ["MATCH"],
                 "route_indicators" : [
                   { "keyword" : "ITVIP", "display" : "ITVIP" },
-                  { "keyword" : "DVR", "display" : "DVR" }
+                  { "keyword" : "ABTUM", "display" : "DVR" }
                 ]
           }
         ]
@@ -754,7 +754,7 @@ const POSITION_CONFIGS = {
             "sids" : ["MATCH"],
                 "route_indicators" : [
                   { "keyword" : "ITVIP", "display" : "ITVIP" },
-                  { "keyword" : "DVR", "display" : "DVR" }
+                  { "keyword" : "ABTUM", "display" : "DVR" }
                 ]
           },
           {
@@ -763,7 +763,7 @@ const POSITION_CONFIGS = {
             "height_percent" : 50,
             "sids" : ["CLN"],
                 "route_indicators" : [
-                  { "keyword" : "DVR", "display" : "DVR" }
+                  { "keyword" : "ABTUM", "display" : "DVR" }
                 ]
           }
         ]
@@ -796,7 +796,7 @@ const POSITION_CONFIGS = {
             "height_percent" : 15,
             "sids" : ["CLN"],
                 "route_indicators" : [
-                  { "keyword" : "DVR", "display" : "DVR" }
+                  { "keyword" : "ABTUM", "display" : "DVR" }
                 ]
           },
           {
@@ -812,7 +812,7 @@ const POSITION_CONFIGS = {
             "sids" : ["MATCH"],
                 "route_indicators" : [
                   { "keyword" : "ITVIP", "display" : "ITVIP" },
-                  { "keyword" : "DVR", "display" : "DVR" }
+                  { "keyword" : "ABTUM", "display" : "DVR" }
                 ]
           }
         ]
@@ -845,7 +845,7 @@ const POSITION_CONFIGS = {
             "height_percent" : 15,
             "sids" : ["CLN"],
                 "route_indicators" : [
-                  { "keyword" : "DVR", "display" : "DVR" }
+                  { "keyword" : "ABTUM", "display" : "DVR" }
                 ]
           },
           {
@@ -861,7 +861,7 @@ const POSITION_CONFIGS = {
             "sids" : ["MATCH"],
                 "route_indicators" : [
                   { "keyword" : "ITVIP", "display" : "ITVIP" },
-                  { "keyword" : "DVR", "display" : "DVR" }
+                  { "keyword" : "ABTUM", "display" : "DVR" }
                 ]
           }
         ]
