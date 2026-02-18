@@ -324,29 +324,6 @@ def fetch_metar(airport):
     except Exception as e:
         logger.error(f"Error fetching METAR for {airport}: {e}", exc_info=True)
         return None
-    
-def get_airport_elevation(airport):
-    """Fetch airport elevation from VATSIM AIP API with caching"""
-    if airport in elevation_cache:
-        return elevation_cache[airport]
-    
-    try:
-        response = requests.get(
-            f'https://api.vatsim.net/api/airports/{airport}',
-            timeout=5
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            elevation = data['data']['altitude_ft']
-            elevation_cache[airport] = elevation
-            logger.info(f"Cached elevation for {airport}: {elevation}ft")
-            return elevation
-            
-    except Exception as e:
-        logger.error(f"Error fetching elevation for {airport}: {e}")
-    
-    return None
 
     
 @app.route('/api/weather/<airport>', methods=['GET'])
