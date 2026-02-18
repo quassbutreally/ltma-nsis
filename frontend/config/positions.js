@@ -50,6 +50,8 @@ const POSITION_CONFIGS = {
         ]
       },
       {
+        //TODO: COWLY_E is identical to COWLY_W at the moment. It shouldn't be. 
+        // This is waiting on me to come up with a clever way to display the integrated weather display for multiple airports.
         "id" : "COWLY_E",
         "name" : "COWLY E",
         "weather_sections" : [
@@ -399,7 +401,7 @@ const POSITION_CONFIGS = {
             "label" : "GATWICK"
           }
         ],
-        "positions" : [
+        "sections" : [
           {
             "airport" : "EGLL",
             "label" : "EGLL CPT GOG GAS MOD MAX",
@@ -426,11 +428,11 @@ const POSITION_CONFIGS = {
         "linked_positions": ["OCK"],
         "weather_sections" : [
           {
-            "airport" : "EGKK",
-            "label" : "GATWICK"
+            "airport" : "EGLL",
+            "label" : "HEATHROW"
           }
         ],
-        "positions" : [
+        "sections" : [
           {
             "airport" : "EGLL",
             "label" : "EGLL CPT GOG GAS MOD MAX",
