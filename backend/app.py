@@ -32,7 +32,8 @@ VALID_AIRPORTS = {
     'EGKK',  # London Gatwick
     'EGSS',  # London Stansted
     'EGGW',  # London Luton
-    'EGLC'  # London City
+    'EGLC',  # London City
+    'EGBB', # Birmingham
 }
 
 AIRPORT_ELEVATIONS = {
