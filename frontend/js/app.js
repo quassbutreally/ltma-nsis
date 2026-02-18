@@ -672,7 +672,8 @@ function createSection(sectionConfig, availableHeight) {
     section.dataset.airport = sectionConfig.airport;
     section.dataset.sids = JSON.stringify(sectionConfig.sids);
     section.dataset.routeIndicators = JSON.stringify(sectionConfig.route_indicators || []);
-    section.dataset.showStarted = 'true';  // Default to showing started aircraft
+    section.dataset.requiredRouteKeywords = JSON.stringify(sectionConfig.required_route_keywords || []);
+    section.dataset.showStarted = 'true';
     
     const sectionHeight = Math.floor((sectionConfig.height_percent / 100) * availableHeight);
     const listHeight = sectionHeight - HEADER_HEIGHT;
@@ -745,13 +746,28 @@ function updateDepartures(data) {
     sections.forEach(section => {
         const airport = section.dataset.airport;
         const sids = JSON.parse(section.dataset.sids);
+        const requiredRouteKeywords = JSON.parse(section.dataset.requiredRouteKeywords || '[]');
         const maxRows = parseInt(section.dataset.maxRows);
         const showStarted = section.dataset.showStarted === 'true';
         
         // Filter aircraft for this section
-        let aircraft = (data[airport] || []).filter(ac => 
-            ac.sid && sids.some(sid => ac.sid.startsWith(sid))
-        );
+        let aircraft = (data[airport] || []).filter(ac => {
+            // Must have matching SID
+            if (!ac.sid || !sids.some(sid => ac.sid.startsWith(sid))) {
+                return false;
+            }
+            
+            // If required route keywords specified, route must contain at least one
+            if (requiredRouteKeywords.length > 0) {
+                if (!ac.route) return false;
+                const hasRequiredKeyword = requiredRouteKeywords.some(keyword => 
+                    ac.route.includes(keyword)
+                );
+                if (!hasRequiredKeyword) return false;
+            }
+            
+            return true;
+        });
         
         // Filter out STUP/PUSH if this section's toggle is off
         if (!showStarted) {

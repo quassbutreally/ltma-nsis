@@ -37,7 +37,7 @@ public:
         "Free"
         ) {}
 
-    ~CDepartureListPlugin() {}
+    ~CDepartureListPlugin() override = default;
 
     void OnFlightPlanControllerAssignedDataUpdate(
         EuroScopePlugIn::CFlightPlan flightPlan,
@@ -80,7 +80,18 @@ public:
         }
         std::string sid = flightPlan.GetFlightPlanData().GetSidName();
         std::string squawk = flightPlan.GetControllerAssignedData().GetSquawk();
-        std::string route = flightPlan.GetFlightPlanData().GetRoute();
+
+        auto extractedRoute = flightPlan.GetExtractedRoute();
+        int routePoints = extractedRoute.GetPointsNumber();
+
+        std::string route;
+
+        for (int i = 0; i < routePoints; i++)
+        {
+            auto point = extractedRoute.GetPointName(i);
+            route += point;
+            route += " ";
+        }
 
         AircraftState state;
         state.callsign = callsign;
@@ -134,19 +145,15 @@ private:
         body += R"("route":")" + state.route + "\"";
         body += "}";
 
-        DisplayUserMessage("DepartureList", "Debug", "Attempting HTTP post...", true, true, false, false, false);
-
         try {
             httplib::Client client("127.0.0.1", 5000);
             client.set_connection_timeout(2);
-            auto result = client.Post("/api/status-update", body, "application/json");
 
-            if (result) {
+            if (auto result = client.Post("/api/status-update", body, "application/json")) {
                 std::string msg = "HTTP response: " + std::to_string(result->status);
-                DisplayUserMessage("DepartureList", "Debug", msg.c_str(), true, true, false, false, false);
             } else {
-                std::string msg = "HTTP failed: " + httplib::to_string(result.error());
-                DisplayUserMessage("DepartureList", "Debug", msg.c_str(), true, true, false, false, false);
+                const std::string msg = "HTTP failed: " + httplib::to_string(result.error());
+                DisplayUserMessage("DepartureList", "Debug", msg.c_str(), true, true, false, true, false);
             }
         } catch (...) {
             DisplayUserMessage("DepartureList", "Debug", "HTTP exception caught", true, true, false, false, false);
