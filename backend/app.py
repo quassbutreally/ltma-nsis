@@ -32,7 +32,12 @@ VALID_AIRPORTS = {
     'EGKK',  # London Gatwick
     'EGSS',  # London Stansted
     'EGGW',  # London Luton
-    'EGLC'  # London City
+    'EGLC',  # London City
+    'EGBB',  # Birmingham
+    'EGNX',  # East Midlands
+    'EGUB',  # Benson
+    'EGDM',  # Boscombe Down
+    'EGVN',  # Brize Norton
 }
 
 AIRPORT_ELEVATIONS = {
@@ -40,7 +45,12 @@ AIRPORT_ELEVATIONS = {
     'EGKK' : 203,
     'EGSS' : 348,
     'EGGW' : 527,
-    'EGLC' : 20
+    'EGLC' : 20,
+    'EGBB' : 339,
+    'EGNX' : 306,
+    'EGUB' : 203,
+    'EGDM' : 407,
+    'EGVN' : 287
 }
 
 # In-memory storage
@@ -217,6 +227,8 @@ def fetch_metar(airport):
         sky_clear_below_5000 = True
         has_cb_tcu = False
 
+        lvp_state = 'OFF'  # Default
+
         if obs.sky:
             for layer in obs.sky:
                 cover, height, cloud_type = layer
@@ -268,6 +280,36 @@ def fetch_metar(airport):
                         'height': int(height.value('FT'))
                     })
 
+            # Check visibility
+            vis_lvp = False
+            if obs.vis:
+                vis_m = obs.vis.value('M')
+                if vis_m <= 600:
+                    vis_lvp = True
+                    lvp_state = 'ON'
+                elif vis_m <= 1500:
+                    vis_lvp = True
+                    if lvp_state == 'OFF':
+                        lvp_state = 'SAFE'
+
+            # Check cloud ceiling (lowest cloud base)
+            if obs.sky:
+                lowest_cloud = None
+                for layer in obs.sky:
+                    cover, height, _ = layer
+                    # Only count BKN or OVC as ceilings
+                    if cover in ['BKN', 'OVC'] and height:
+                        height_ft = height.value('FT')
+                        if lowest_cloud is None or height_ft < lowest_cloud:
+                            lowest_cloud = height_ft
+                
+                if lowest_cloud is not None:
+                    if lowest_cloud <= 200:
+                        lvp_state = 'ON'
+                    elif lowest_cloud <= 300:
+                        if lvp_state == 'OFF':
+                            lvp_state = 'SAFE'
+
             # Parse weather
             weather = obs.present_weather() if obs.weather else None
 
@@ -296,6 +338,7 @@ def fetch_metar(airport):
             'airport': airport,
             'toi': toi,
             'cavok': is_cavok,
+            'lvp': lvp_state,
             'wind': {
                 'direction': wind_dir,
                 'speed': wind_speed,
@@ -320,29 +363,6 @@ def fetch_metar(airport):
     except Exception as e:
         logger.error(f"Error fetching METAR for {airport}: {e}", exc_info=True)
         return None
-    
-def get_airport_elevation(airport):
-    """Fetch airport elevation from VATSIM AIP API with caching"""
-    if airport in elevation_cache:
-        return elevation_cache[airport]
-    
-    try:
-        response = requests.get(
-            f'https://api.vatsim.net/api/airports/{airport}',
-            timeout=5
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            elevation = data['data']['altitude_ft']
-            elevation_cache[airport] = elevation
-            logger.info(f"Cached elevation for {airport}: {elevation}ft")
-            return elevation
-            
-    except Exception as e:
-        logger.error(f"Error fetching elevation for {airport}: {e}")
-    
-    return None
 
     
 @app.route('/api/weather/<airport>', methods=['GET'])

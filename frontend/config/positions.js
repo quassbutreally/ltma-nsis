@@ -50,14 +50,12 @@ const POSITION_CONFIGS = {
         ]
       },
       {
-        //TODO: COWLY_E is identical to COWLY_W at the moment. It shouldn't be. 
-        // This is waiting on me to come up with a clever way to display the integrated weather display for multiple airports.
         "id" : "COWLY_E",
         "name" : "COWLY E",
         "weather_sections" : [
           {
-            "airport" : "EGSS",
-            "label" : "STANSTED"
+            "type" : "composite",
+            "airports" : ["EGLL", "EGKK", "EGNX", "EGBB", "EGGW", "EGSS"]
           }
         ],
         "sections" : [
@@ -80,8 +78,8 @@ const POSITION_CONFIGS = {
         "name" : "WELIN W+E",
         "weather_sections" : [
           {
-            "airport" : "EGSS",
-            "label" : "STANSTED"
+            "type" : "composite",
+            "airports" : ["EGLL", "EGKK", "EGNX", "EGBB", "EGGW", "EGSS"]
           }
         ],
         "sections" : [
@@ -128,8 +126,8 @@ const POSITION_CONFIGS = {
         "name" : "MIDLANDS BANDBOX",
         "weather_sections" : [
           {
-            "airport" : "EGSS",
-            "label" : "STANSTED"
+            "type" : "composite",
+            "airports" : ["EGLL", "EGKK", "EGNX", "EGBB", "EGGW", "EGSS"]
           }
         ],
         "sections" : [
@@ -1156,6 +1154,56 @@ const POSITION_CONFIGS = {
         "id" : "THS_RDR",
         "name" : "THS RDR",
         "alias_for" : "LC_DIR"
+      },
+    ]
+  },
+  "NORTHOLT" : {
+    "default_position" : "BENSON_WX",
+    "positions" : [
+      {
+        "id" : "BENSON_WX",
+        "name" : "BENSON WX",
+        "layout": "weather_only",
+        "weather_sections" : [
+          {
+            "airport" : "EGLL",
+            "label" : "HEATHROW"
+          },
+          {
+            "airport" : "EGUB",
+            "label" : "BENSON"
+          }
+        ]
+      },
+      {
+        "id" : "BOSCOMBE_WX",
+        "name" : "BOSCOMBE WX",
+        "layout": "weather_only",
+        "weather_sections" : [
+          {
+            "airport" : "EGLL",
+            "label" : "HEATHROW"
+          },
+          {
+            "airport" : "EGDM",
+            "label" : "BOSCOMBE DOWN"
+          }
+        ]
+      },
+      {
+        "id" : "BRIZE_WX",
+        "name" : "BRIZE WX",
+        "layout": "weather_only",
+        "weather_sections" : [
+          {
+            "airport" : "EGLL",
+            "label" : "HEATHROW"
+          },
+          {
+            "airport" : "EGVN",
+            "label" : "BRIZE NORTON"
+          }
+        ]
       },
     ]
   }
