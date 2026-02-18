@@ -41,8 +41,8 @@ This project consists of three components:
 - **Parsed weather fields**: TOI, Visibility, Weather, Cloud (up to 3 layers), Temp/Dewpoint, QNH, QFE
 - **CAVOK detection** and display
 - **QFE calculation**: Accurate barometric formula using airport elevation and temperature
-- **LVP indicators**: Three-state system (OFF/SAFE/IN LVP) based on visibility and cloud ceiling
-  - **IN LVP** (red): Visibility ≤ 600m or cloud ceiling ≤ 200ft
+- **LVP indicators**: Three-state system (OFF/SAFE/VIS2) based on visibility and cloud ceiling
+  - **VIS2** (red): Visibility ≤ 600m or cloud ceiling ≤ 200ft
   - **SAFE** (yellow): Visibility ≤ 1500m or cloud ceiling ≤ 300ft
   - **OFF** (white): All other conditions
 - **SVG Wind Wheel**:
@@ -381,7 +381,7 @@ Each departure list section has a `HIDE STARTED` / `SHOW STARTED` button. When s
 
 LVP (Low Visibility Procedures) status is calculated automatically based on METAR data:
 
-- **IN LVP** (red background): Visibility ≤ 600m OR lowest BKN/OVC cloud ≤ 200ft
+- **VIS2** (red background): Visibility ≤ 600m OR lowest BKN/OVC cloud ≤ 200ft
 - **SAFE** (yellow background): Visibility ≤ 1500m OR lowest BKN/OVC cloud ≤ 300ft
 - **OFF** (no background): All other conditions
 
@@ -505,7 +505,7 @@ http://127.0.0.1:5000/api/weather/EGLL
 - [x] Composite weather view for multi-airport monitoring
 - [x] Weather-only layout for full-width side-by-side display
 - [x] QFE calculation with accurate barometric formula
-- [x] LVP status indicators (OFF/SAFE/IN LVP)
+- [x] LVP status indicators (OFF/SAFE/VIS2)
 - [x] Waypoint-based route extraction from plugin
 - [x] Parallel weather fetching for fast page loads
 - [ ] ATIS integration (with METAR fallback)
