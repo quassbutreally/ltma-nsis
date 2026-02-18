@@ -10,11 +10,11 @@ Inspired by real-world ATC departure list systems used in UK airspace.
 
 This project consists of three components:
 
-**EuroScope Plugin (C++ DLL)** — Monitors aircraft ground state changes within EuroScope (STUP, PUSH, TAXI, DEPA) and detects airborne transitions. Sends state updates to the local web server via HTTP.
+**EuroScope Plugin (C++ DLL)** — Monitors aircraft ground state changes within EuroScope (STUP, PUSH, TAXI, DEPA) and detects airborne transitions. Sends state updates to the local web server via HTTP. Routes are sent as extracted waypoint sequences rather than airways for precise filtering.
 
-**Backend Server (Python/Flask)** — Receives updates from the plugin, maintains current aircraft state, and serves departure list and weather data via REST API. Fetches live METAR data from VATSIM and caches it for efficient delivery.
+**Backend Server (Python/Flask)** — Receives updates from the plugin, maintains current aircraft state, and serves departure list and weather data via REST API. Fetches live METAR data from VATSIM, calculates QFE and LVP status, and caches results for efficient delivery.
 
-**Frontend Web Interface (HTML/JS/CSS)** — Browser-based dashboard displaying real-time departure lists and weather panels. Updates every 2 seconds for departures, 3 minutes for weather. Fully responsive with percentage-based layouts.
+**Frontend Web Interface (HTML/JS/CSS)** — Browser-based dashboard displaying real-time departure lists and weather panels. Updates every 2 seconds for departures, 3 minutes for weather. Fully responsive with percentage-based layouts and multiple display modes.
 
 ---
 
@@ -25,31 +25,54 @@ This project consists of three components:
 - **Four aircraft states**: STUP/PUSH (startup), TAXI, DEPA (cleared for takeoff), AIRBORNE
 - **Automatic sorting**: AIRBORNE → DEPA → TAXI → STUP/PUSH, oldest first within each category
 - **SID filtering**: Each section displays only aircraft on specified SID prefixes
-- **Route indicators**: Configurable keyword mapping (e.g. M85 → ITVIP) for operationally significant routing
+- **Route filtering**: Optional required route keywords for AND filtering with SIDs (e.g., only show BPK SID aircraft routing via ITVIP)
+- **Route indicators**: Configurable keyword mapping (e.g., ITVIP → ITVIP display) for operationally significant routing
+- **Waypoint-based routes**: Plugin sends extracted waypoint sequences, enabling precise route matching without airway parsing
 - **Overflow handling**: Displays `MORE N` when more aircraft exist than can fit on screen
 - **Toggle startup aircraft**: Per-section button to show/hide STUP/PUSH aircraft (grey background when shown)
 - **Auto-cleanup**: Airborne aircraft automatically removed after 3 minutes
 - **Percentage-based layouts**: Section heights defined as percentages for consistent display across screen sizes
+- **Status indicators**: All indicators display in white text (/, X, X MM) regardless of aircraft state
 
 ### Weather Panels
-- **Live METAR data** from VATSIM API
-- **Parsed weather fields**: TOI, Visibility, Weather, Cloud (up to 3 layers), Temp/Dewpoint, QNH
+
+**Standard View (Single Airport):**
+- **Live METAR data** from VATSIM API with 60-second caching
+- **Parsed weather fields**: TOI, Visibility, Weather, Cloud (up to 3 layers), Temp/Dewpoint, QNH, QFE
 - **CAVOK detection** and display
+- **QFE calculation**: Accurate barometric formula using airport elevation and temperature
+- **LVP indicators**: Three-state system (OFF/SAFE/IN LVP) based on visibility and cloud ceiling
+  - **IN LVP** (red): Visibility ≤ 600m or cloud ceiling ≤ 200ft
+  - **SAFE** (yellow): Visibility ≤ 1500m or cloud ceiling ≤ 300ft
+  - **OFF** (white): All other conditions
 - **SVG Wind Wheel**:
-  - 36 segments (10° each) showing wind direction
+  - 36 segments (10° each) showing wind direction, centered on reported bearings
   - Active segment(s) highlighted white for steady or variable wind
   - Wind direction arrow pointing to active bearing
   - Centre box showing steady wind speed
   - Min/Max labels (steady and gust speeds)
   - Cardinal points and bearing markers
 - **Colour-coded airports**: Configurable background colours per airport (Heathrow green, Stansted yellow, Luton orange, Gatwick pink, default blue)
-- **5-minute cache** for METAR data to reduce API calls
+
+**Composite View (Multiple Airports):**
+- **3×2 grid layout** showing 6 airports simultaneously
+- **Compact display**: TOI, Temp/Dewpoint, QNH, and vertically-stacked cloud layers per airport
+- **Used by positions** needing multi-airport awareness (e.g., TC Midlands)
+- **Full-height display** matching standard weather panel dimensions
+
+**Weather-Only Layout:**
+- **Side-by-side full-width** display of two weather panels
+- **No departure lists** for positions focused on weather monitoring
+- **Used by positions** like Northolt that display multiple weather combinations
+- **Page switching** via position buttons (e.g., Northolt 1, Northolt 2, Northolt 3)
 
 ### Position Configuration
 - **14 sector groups** with up to 8 positions each
 - **Configurable defaults**: Each sector group can specify a default position to load on selection
-- **Linked positions**: Positions can be linked (e.g. LOREL shows NE_DEPS content for situational awareness)
-- **Flexible section layouts**: Each position defines multiple departure list sections with independent height percentages, SID filters, and route indicators
+- **Linked positions**: Positions can be linked (e.g., LOREL shows NE_DEPS content for situational awareness)
+- **Layout modes**: Standard (weather + departures), composite weather, or weather-only (full-width side-by-side)
+- **Flexible section layouts**: Each position defines multiple departure list sections with independent height percentages, SID filters, route keywords, and route indicators
+- **Parallel weather fetching**: All weather data fetched simultaneously for fast page loading
 
 ---
 
@@ -87,7 +110,7 @@ vatsim-departure-list/
 │   ├── css/
 │   │   └── style.css               # Styling
 │   └── js/
-│       └── app.js                  # Frontend logic
+│       └── app.js                  # Frontend logic (with JSDoc comments)
 └── plugin/
     ├── CMakeLists.txt
     ├── sdk/
@@ -228,44 +251,76 @@ const SECTOR_GROUPS = [
 
 ### Positions
 
-Each sector group has up to 8 positions (top sidebar buttons). Each position defines its weather sections, departure list sections, and optionally a default position and linked positions:
+Each sector group has up to 8 positions (top sidebar buttons). Each position can use one of three layout modes:
+
+#### Standard Layout (Weather + Departures)
 
 ```javascript
-const POSITION_CONFIGS = {
-  "TC_EAST": {
-    "default_position": "SABER",  // Position to load when sector is clicked
-    "positions": [
-      {
-        "id": "SABER",
-        "name": "SABER",
-        "linked_positions": ["LOREL"],  // These buttons also highlight when SABER is active
-        "weather_sections": [
-          {
-            "airport": "EGLL",
-            "label": "HEATHROW"
-          }
-        ],
-        "sections": [
-          {
-            "airport": "EGLL",
-            "label": "EGLL BPK BPK/L",
-            "height_percent": 50,       // % of available display height
-            "sids": ["BPK"],            // SID prefixes to match
-            "route_indicators": [       // Optional route keyword mappings
-              { "keyword": "M85", "display": "ITVIP" },
-              { "keyword": "M84", "display": "DVR" }
-            ]
-          }
-        ]
-      },
-      {
-        "id": "LOREL",
-        "name": "LOREL",
-        "alias_for": "NE_DEPS"  // Shows NE_DEPS content (inbound position with departure list for situational awareness)
-      }
-    ]
-  }
-};
+{
+  "id": "SABER",
+  "name": "SABER",
+  "linked_positions": ["LOREL"],  // Highlight these buttons too
+  "weather_sections": [
+    {
+      "airport": "EGLL",
+      "label": "HEATHROW"
+    }
+  ],
+  "sections": [
+    {
+      "airport": "EGLL",
+      "label": "EGLL BPK ITVIP",
+      "height_percent": 50,
+      "sids": ["BPK"],
+      "required_route_keywords": ["ITVIP"],  // Optional AND filter
+      "route_indicators": [
+        { "keyword": "ITVIP", "display": "ITVIP" }
+      ]
+    }
+  ]
+}
+```
+
+#### Composite Weather Layout
+
+```javascript
+{
+  "id": "TC_MIDLANDS_POS",
+  "name": "POSITION",
+  "weather_sections": [
+    {
+      "type": "composite",
+      "airports": ["EGLL", "EGKK", "EGNX", "EGBB", "EGGW", "EGSS"]
+    }
+  ],
+  "sections": [
+    // Normal departure sections
+  ]
+}
+```
+
+#### Weather-Only Layout (Full Width)
+
+```javascript
+{
+  "id": "NORTHOLT_1",
+  "name": "NORTHOLT 1",
+  "layout": "weather_only",
+  "weather_sections": [
+    { "airport": "EGLL", "label": "HEATHROW" },
+    { "airport": "EGWU", "label": "NORTHOLT" }
+  ]
+}
+```
+
+#### Alias Positions
+
+```javascript
+{
+  "id": "LOREL",
+  "name": "LOREL",
+  "alias_for": "NE_DEPS"  // Shows NE_DEPS content
+}
 ```
 
 **Important:** `height_percent` values for all sections within a position must add up to exactly 100. A console warning will appear if they do not.
@@ -281,14 +336,17 @@ The plugin monitors four ground states set by controllers in EuroScope:
 | State | Display | Meaning |
 |-------|---------|---------|
 | `STUP` / `PUSH` | Grey background, no indicator | Aircraft is starting up or pushing back (optional display) |
-| `TAXI` | `/` | Aircraft is taxiing |
-| `DEPA` | `X` | Aircraft is cleared for takeoff |
-| `AIRBORNE` | `X 45` | Aircraft is airborne (45 = minutes past the hour) |
+| `TAXI` | `/` (white) | Aircraft is taxiing |
+| `DEPA` | `X` (white) | Aircraft is cleared for takeoff |
+| `AIRBORNE` | `X 45` (white) | Aircraft is airborne (45 = minutes past the hour) |
+
+**All status indicators are displayed in white text.**
 
 **State Transitions:**
 - Setting ground state to empty (NSTS) sends a `CLEAR` status and removes the aircraft from the list
 - Airborne state is detected automatically when an aircraft in `DEPA` exceeds **40 knots ground speed** and **200 fpm vertical rate**
 - Airborne aircraft are automatically removed from the display **3 minutes** after becoming airborne
+- Routes are sent as extracted waypoint sequences, enabling precise keyword matching
 
 ### Sort Order
 
@@ -302,15 +360,32 @@ Within each section, aircraft are displayed in the following order:
 
 If more aircraft are present than a section can display, the excess count is shown in the section header as `MORE N`.
 
-### Route Indicators
+### Route Filtering
 
-Each departure list section can optionally define route indicators — keyword mappings that scan the filed route and display a short label in the route column. For example, if an aircraft's route contains `M85`, the route column will display `ITVIP`. This is useful for highlighting routing that is operationally significant to a particular sector.
+**Route Indicators** (optional): Display a short label when an aircraft's route contains specific keywords. For example, if route contains `ITVIP`, display `ITVIP` in the route column.
 
-Only the first matching keyword is displayed. If no keywords match, the route column is blank.
+**Required Route Keywords** (optional): Only show aircraft whose routes contain at least one of the specified keywords. This creates an AND filter with the SID requirement. For example:
+```javascript
+"sids": ["BPK"],
+"required_route_keywords": ["ITVIP"]
+// Only shows aircraft with BPK SID AND ITVIP in their route
+```
+
+Only the first matching route indicator is displayed. If no keywords match, the route column is blank.
 
 ### Startup Aircraft Toggle
 
 Each departure list section has a `HIDE STARTED` / `SHOW STARTED` button. When shown, STUP and PUSH aircraft appear with a grey background. When hidden, they are filtered out. This allows controllers to focus on active departures while still having situational awareness of aircraft preparing to taxi.
+
+### LVP Status
+
+LVP (Low Visibility Procedures) status is calculated automatically based on METAR data:
+
+- **IN LVP** (red background): Visibility ≤ 600m OR lowest BKN/OVC cloud ≤ 200ft
+- **SAFE** (yellow background): Visibility ≤ 1500m OR lowest BKN/OVC cloud ≤ 300ft
+- **OFF** (no background): All other conditions
+
+The LVP indicator appears in the bottom right of each weather panel, opposite the temperature/dewpoint display.
 
 ---
 
@@ -338,9 +413,11 @@ The Flask backend exposes the following endpoints:
   "status": "STUP" | "PUSH" | "TAXI" | "DEPA" | "AIRBORNE" | "CLEAR",
   "sid": "BPK7G",
   "squawk": "1234",
-  "route": "BPK L620 DVR UL9 KONAN"
+  "route": "BPK WOBUN WELIN BRUCE AMLAD RIBEL"
 }
 ```
+
+Note: Routes are sent as space-separated waypoint sequences from the extracted route.
 
 ### Weather Response
 
@@ -349,6 +426,7 @@ The Flask backend exposes the following endpoints:
   "airport": "EGLL",
   "toi": "1220",
   "cavok": false,
+  "lvp": "OFF",
   "visibility": "8KM",
   "weather": "light rain and drizzle",
   "clouds": [
@@ -359,6 +437,7 @@ The Flask backend exposes the following endpoints:
   "temp": 11.0,
   "dewpoint": 9.0,
   "qnh": "983hPa",
+  "qfe": "980hPa",
   "wind": {
     "direction": 250.0,
     "speed": 13.0,
@@ -381,13 +460,13 @@ You can inject test data directly using PowerShell:
 Invoke-WebRequest -Uri http://127.0.0.1:5000/api/status-update `
   -Method POST `
   -Headers @{"Content-Type"="application/json"} `
-  -Body '{"callsign":"BAW123","airport":"EGLL","status":"TAXI","sid":"BPK7G","squawk":"1234","route":"BPK M85 ITVIP"}'
+  -Body '{"callsign":"BAW123","airport":"EGLL","status":"TAXI","sid":"BPK7G","squawk":"1234","route":"BPK WOBUN WELIN ITVIP"}'
 
 # Change to DEPA
 Invoke-WebRequest -Uri http://127.0.0.1:5000/api/status-update `
   -Method POST `
   -Headers @{"Content-Type"="application/json"} `
-  -Body '{"callsign":"BAW123","airport":"EGLL","status":"DEPA","sid":"BPK7G","squawk":"1234","route":"BPK M85 ITVIP"}'
+  -Body '{"callsign":"BAW123","airport":"EGLL","status":"DEPA","sid":"BPK7G","squawk":"1234","route":"BPK WOBUN WELIN ITVIP"}'
 
 # Remove aircraft
 Invoke-WebRequest -Uri http://127.0.0.1:5000/api/status-update `
@@ -406,9 +485,10 @@ http://127.0.0.1:5000/api/weather/EGLL
 ## Known Limitations
 
 - Aircraft state is held in memory only — restarting the backend clears all data
-- METAR fields with `///` (not reported) are not explicitly handled yet
+- METAR fields with `///` (not reported) are not explicitly handled
 - ATIS integration is not implemented — weather is sourced from METAR only
 - System tray "Restart Server" option requires full application restart
+- Airport whitelist must be manually updated in backend for new airports
 
 ---
 
@@ -419,13 +499,19 @@ http://127.0.0.1:5000/api/weather/EGLL
 - [x] Configurable default positions per sector
 - [x] Linked positions for situational awareness
 - [x] Route indicators for operationally significant routing
+- [x] Required route keywords for AND filtering
 - [x] CLEAR status to remove aircraft from lists
 - [x] System tray application for easy user control
+- [x] Composite weather view for multi-airport monitoring
+- [x] Weather-only layout for full-width side-by-side display
+- [x] QFE calculation with accurate barometric formula
+- [x] LVP status indicators (OFF/SAFE/IN LVP)
+- [x] Waypoint-based route extraction from plugin
+- [x] Parallel weather fetching for fast page loads
 - [ ] ATIS integration (with METAR fallback)
 - [ ] Handle `///` (not reported) fields in METAR display
 - [ ] Persistent storage across server restarts
 - [ ] Centrally-hosted position configuration updates
-- [ ] Additional sector group configurations
 
 ---
 
@@ -445,12 +531,18 @@ http://127.0.0.1:5000/api/weather/EGLL
 - Verify backend is running (check system tray icon)
 - Check Flask console for incoming requests
 - Verify SID prefixes in position config match actual aircraft SIDs
+- Check if required_route_keywords are preventing display
 - Check browser console (F12) for errors
 
 **Weather not updating:**
 - METAR cache is 60 seconds - wait for next refresh
 - Check Flask console for METAR fetch errors
 - Verify VATSIM METAR API is accessible: `https://metar.vatsim.net/EGLL`
+- Verify airport is in VALID_AIRPORTS whitelist in backend
+
+**Weather shows 404 for airport:**
+- Add the airport ICAO code to VALID_AIRPORTS list in `app.py`
+- Restart the backend server
 
 ---
 
@@ -462,7 +554,7 @@ TBD
 
 ## Credits
 
-Developed for UK VATSIM controllers. Inspired by real-world departure list systems.
+Developed for UK VATSIM controllers. Inspired by real-world NATS departure list systems.
 
 Built with:
 - [Flask](https://flask.palletsprojects.com/)
