@@ -198,8 +198,6 @@ function handlePositionClick(positionId) {
 
 /**
  * Render content for the selected position
- * Validates section percentages, renders weather and departure sections,
- * and initiates data fetching
  */
 function renderPositionContent() {
     if (!currentSectorGroup || !currentPosition) return;
@@ -240,7 +238,7 @@ function renderPositionContent() {
 async function renderWeatherOnlyLayout(weatherConfigs) {
     const weatherContainer = document.getElementById('weather-sections');
     const departureContainer = document.getElementById('departure-lists');
-    const contentArea = weatherContainer.parentElement; // .content-area
+    const contentArea = weatherContainer.parentElement;
     
     // Clear both containers
     weatherContainer.innerHTML = '';
@@ -253,12 +251,17 @@ async function renderWeatherOnlyLayout(weatherConfigs) {
     contentArea.classList.add('weather-only-mode');
     weatherContainer.classList.add('weather-only-layout');
     
-    // Create weather boxes
-    for (const config of weatherConfigs) {
+    // Create all boxes first (instant - shows placeholders)
+    const boxes = weatherConfigs.map(config => {
         const weatherBox = createWeatherBox(config);
         weatherContainer.appendChild(weatherBox);
-        await updateWeatherBox(weatherBox, config.airport, config);
-    }
+        return { box: weatherBox, config };
+    });
+    
+    // Fetch all weather data in parallel
+    await Promise.all(boxes.map(({ box, config }) => 
+        updateWeatherBox(box, config.airport, config)
+    ));
     
     startWeatherRefresh(weatherConfigs);
 }
@@ -313,7 +316,7 @@ function clearMainContent() {
 /**
  * Render weather sections for the current position
  * Handles both standard weather boxes and composite views
- * Fetches initial data and starts refresh timer
+ * Fetches all weather data in parallel for better performance
  * 
  * @param {Array} weatherConfigs - Array of weather section configurations
  */
@@ -321,15 +324,26 @@ async function renderWeatherSections(weatherConfigs) {
     const container = document.getElementById('weather-sections');
     container.innerHTML = '';
     
-    for (const config of weatherConfigs) {
-        if (config.type === 'composite') {
-            const compositeBox = await createCompositeWeatherBox(config);
-            container.appendChild(compositeBox);
-        } else {  
-            const weatherBox = createWeatherBox(config);
-            container.appendChild(weatherBox);
-            await updateWeatherBox(weatherBox, config.airport, config);
-        }
+    // Separate standard and composite configs
+    const standardConfigs = weatherConfigs.filter(c => c.type !== 'composite');
+    const compositeConfigs = weatherConfigs.filter(c => c.type === 'composite');
+    
+    // Create all standard boxes first (instant - shows placeholders)
+    const boxes = standardConfigs.map(config => {
+        const weatherBox = createWeatherBox(config);
+        container.appendChild(weatherBox);
+        return { box: weatherBox, config };
+    });
+    
+    // Fetch all standard weather data in parallel
+    await Promise.all(boxes.map(({ box, config }) => 
+        updateWeatherBox(box, config.airport, config)
+    ));
+    
+    // Handle composite boxes
+    for (const config of compositeConfigs) {
+        const compositeBox = await createCompositeWeatherBox(config);
+        container.appendChild(compositeBox);
     }
     
     startWeatherRefresh(weatherConfigs);
