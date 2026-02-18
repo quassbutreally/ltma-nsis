@@ -231,9 +231,14 @@ async function renderWeatherSections(weatherConfigs) {
     container.innerHTML = '';
     
     for (const config of weatherConfigs) {
-        const weatherBox = createWeatherBox(config);
-        container.appendChild(weatherBox);
-        await updateWeatherBox(weatherBox, config.airport, config);
+        if (config.type === 'composite') {
+           const compositeBox = await createCompositeWeatherBox(config);
+            container.appendChild(compositeBox);
+        } else {  
+            const weatherBox = createWeatherBox(config);
+            container.appendChild(weatherBox);
+            await updateWeatherBox(weatherBox, config.airport, config);
+        }
     }
     
     startWeatherRefresh(weatherConfigs);
@@ -273,6 +278,93 @@ function createWeatherBox(config) {
     `;
     
     return weatherBox;
+}
+
+async function createCompositeWeatherBox(config) {
+    const box = document.createElement('div');
+    box.className = 'weather-composite';
+    box.dataset.type = 'composite';
+    box.dataset.airports = JSON.stringify(config.airports);
+    
+    // Fetch weather for all airports
+    const weatherData = await Promise.all(
+        config.airports.map(async airport => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/weather/${airport}`);
+                if (!response.ok) throw new Error('Failed to fetch');
+                return { airport, data: await response.json() };
+            } catch (error) {
+                console.error(`Failed to fetch weather for ${airport}:`, error);
+                return { airport, data: null };
+            }
+        })
+    );
+    
+    // Create 3x2 grid
+    const grid = document.createElement('div');
+    grid.className = 'composite-grid';
+    
+    weatherData.forEach(({ airport, data }) => {
+        const cell = createCompositeCell(airport, data);
+        grid.appendChild(cell);
+    });
+    
+    box.appendChild(grid);
+    return box;
+}
+
+function createCompositeCell(airport, data) {
+    const cell = document.createElement('div');
+    cell.className = 'composite-cell';
+    
+    if (!data) {
+        cell.innerHTML = `
+            <div class="composite-airport">${airport}</div>
+            <div class="composite-nodata">NO DATA</div>
+        `;
+        return cell;
+    }
+    
+    // Format temperature and dewpoint
+
+    var temp = '--'
+    if (data.temp != null) {
+        temp = Math.round(data.temp) >= 0 ? String(Math.round(data.temp)).padStart(2, '0') : "M" + String(Math.abs(Math.round(data.temp))).padStart(2, '0');
+    }
+
+    var dewpoint = '--'
+    if (data.dewpoint != null) {
+        dewpoint = Math.round(data.dewpoint) >= 0 ? String(Math.round(data.dewpoint)).padStart(2, '0') : "M" + String(Math.abs(Math.round(data.dewpoint))).padStart(2, '0');
+    }
+
+    const qnh = data.qnh ? data.qnh.replace('hPa', 'A') : 'N/A';
+    
+    // Build table HTML
+    let tableHTML = `
+        <div class="composite-airport">${airport}</div>
+        <table class="composite-table">
+            <tr><td>TOI:</td><td>${data.toi || '--'}Z</td></tr>
+            <tr><td>TEMP/DP:</td><td>${temp}/${dewpoint}</td></tr>
+            <tr><td>QNH:</td><td>${qnh}</td></tr>
+    `;
+    
+    // Add clouds - vertically stacked, highest first
+    if (data.cavok) {
+        tableHTML += '<tr><td>CLD:</td><td>CAVOK</td></tr>';
+    } else if (data.clouds && data.clouds.length > 0) {
+        const sortedClouds = [...data.clouds].sort((a, b) => b.height - a.height);
+        sortedClouds.forEach((cloud, index) => {
+            const label = index === 0 ? 'CLD:' : '';
+            tableHTML += `<tr><td>${label}</td><td>${cloud.cover} ${cloud.height}</td></tr>`;
+        });
+    } else {
+        tableHTML += '<tr><td>CLD:</td><td>SKC</td></tr>';
+    }
+    
+    tableHTML += '</table>';
+    cell.innerHTML = tableHTML;
+    
+    return cell;
 }
 
 /**
@@ -398,17 +490,41 @@ function startWeatherRefresh(weatherConfigs) {
     }
     
     weatherRefreshTimer = setInterval(() => {
-        // Need to find the original config for each box
         const sectorConfig = POSITION_CONFIGS[currentSectorGroup];
         const positionConfig = sectorConfig?.positions.find(p => p.id === currentPosition);
         
         if (positionConfig) {
+            // Update standard weather boxes
             document.querySelectorAll('.weather-box').forEach(box => {
                 const airport = box.dataset.airport;
-                const config = positionConfig.weather_sections.find(ws => ws.airport === airport);
+                const config = positionConfig.weather_sections?.find(ws => ws.airport === airport);
                 if (config) {
                     updateWeatherBox(box, airport, config);
                 }
+            });
+            
+            // Update composite weather boxes
+            document.querySelectorAll('.weather-composite').forEach(async box => {
+                const airports = JSON.parse(box.dataset.airports);
+                const weatherData = await Promise.all(
+                    airports.map(async airport => {
+                        try {
+                            const response = await fetch(`${API_BASE_URL}/weather/${airport}`);
+                            if (!response.ok) throw new Error('Failed to fetch');
+                            return { airport, data: await response.json() };
+                        } catch (error) {
+                            return { airport, data: null };
+                        }
+                    })
+                );
+                
+                // Rebuild grid
+                const grid = box.querySelector('.composite-grid');
+                grid.innerHTML = '';
+                weatherData.forEach(({ airport, data }) => {
+                    const cell = createCompositeCell(airport, data);
+                    grid.appendChild(cell);
+                });
             });
         }
     }, WEATHER_REFRESH_INTERVAL);

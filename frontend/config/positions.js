@@ -50,14 +50,12 @@ const POSITION_CONFIGS = {
         ]
       },
       {
-        //TODO: COWLY_E is identical to COWLY_W at the moment. It shouldn't be. 
-        // This is waiting on me to come up with a clever way to display the integrated weather display for multiple airports.
         "id" : "COWLY_E",
         "name" : "COWLY E",
         "weather_sections" : [
           {
-            "airport" : "EGSS",
-            "label" : "STANSTED"
+            "type" : "composite",
+            "airports" : ["EGLL", "EGKK", "EGNX", "EGBB", "EGGW", "EGSS"]
           }
         ],
         "sections" : [
@@ -80,8 +78,8 @@ const POSITION_CONFIGS = {
         "name" : "WELIN W+E",
         "weather_sections" : [
           {
-            "airport" : "EGSS",
-            "label" : "STANSTED"
+            "type" : "composite",
+            "airports" : ["EGLL", "EGKK", "EGNX", "EGBB", "EGGW", "EGSS"]
           }
         ],
         "sections" : [
@@ -128,8 +126,8 @@ const POSITION_CONFIGS = {
         "name" : "MIDLANDS BANDBOX",
         "weather_sections" : [
           {
-            "airport" : "EGSS",
-            "label" : "STANSTED"
+            "type" : "composite",
+            "airports" : ["EGLL", "EGKK", "EGNX", "EGBB", "EGGW", "EGSS"]
           }
         ],
         "sections" : [
