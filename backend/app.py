@@ -33,7 +33,8 @@ VALID_AIRPORTS = {
     'EGSS',  # London Stansted
     'EGGW',  # London Luton
     'EGLC',  # London City
-    'EGBB', # Birmingham
+    'EGBB',  # Birmingham
+    'EGNX',  # East Midlands
 }
 
 AIRPORT_ELEVATIONS = {
@@ -41,7 +42,9 @@ AIRPORT_ELEVATIONS = {
     'EGKK' : 203,
     'EGSS' : 348,
     'EGGW' : 527,
-    'EGLC' : 20
+    'EGLC' : 20,
+    'EGBB' : 339,
+    'EGNX' : 306
 }
 
 # In-memory storage
