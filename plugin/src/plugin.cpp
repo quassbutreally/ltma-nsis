@@ -81,12 +81,12 @@ public:
         std::string sid = flightPlan.GetFlightPlanData().GetSidName();
         std::string squawk = flightPlan.GetControllerAssignedData().GetSquawk();
 
-        auto extractedRoute = flightPlan.GetExtractedRoute();
-        int routePoints = extractedRoute.GetPointsNumber();
+        EuroScopePlugIn::CFlightPlanExtractedRoute extractedRoute = flightPlan.GetExtractedRoute();
+        auto routePoints = extractedRoute.GetPointsNumber();
 
         std::string route;
 
-        for (int i = 0; i < routePoints; i++)
+        for (auto i = 0; i < routePoints; i++)
         {
             auto point = extractedRoute.GetPointName(i);
             route += point;
@@ -110,10 +110,10 @@ public:
     }
 
     void OnRadarTargetPositionUpdate(
-        EuroScopePlugIn::CRadarTarget radarTarget) override {
-        std::string callsign = radarTarget.GetCallsign();
+        const EuroScopePlugIn::CRadarTarget radarTarget) override {
+        const std::string callsign = radarTarget.GetCallsign();
 
-        auto it = trackedAircraft.find(callsign);
+        const auto it = trackedAircraft.find(callsign);
         if (it == trackedAircraft.end())
             return;
 
@@ -122,10 +122,9 @@ public:
         if (state.status != "DEPA" || state.airborne)
             return;
 
-        int groundSpeed = radarTarget.GetGS();
-        int verticalRate = radarTarget.GetVerticalSpeed();
+        const int groundSpeed = radarTarget.GetGS();
 
-        if (groundSpeed > 40 && verticalRate > 200) {
+        if (const int verticalRate = radarTarget.GetVerticalSpeed(); groundSpeed > 40 && verticalRate > 200) {
             state.airborne = true;
             state.status = "AIRBORNE";
             std::thread([this, state]() {

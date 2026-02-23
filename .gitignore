@@ -25,4 +25,5 @@ Thumbs.db
 
 # C++
 cmake-build-debug/
+cmake-build-release/
 sdk/
